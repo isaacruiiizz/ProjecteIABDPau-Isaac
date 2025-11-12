@@ -3,14 +3,8 @@
 Sistema complet per anotar vídeos amb Label Studio i entrenar models YOLOv8.
 
 El procés transforma el video en frames i les anotacions es fan sobre els frames.
-Si es vol fer sobre el video s'ha de preparar el fitxer mp4
-
-https://labelstud.io/tags/video#Video-format
-
-# Extract the exact video stream duration in seconds
-DUR=$(ffprobe -v error -select_streams v:0 -show_entries stream=duration -of default=nokey=1:noprint_wrappers=1 input.mp4)
-# Re-encode media file to recommended format
-ffmpeg -i input_video.mp4 -c:v libx264 -profile:v high -level 4.0 -pix_fmt yuv420p -r 30 -c:a aac -b:a 128k -to $DUR output_video.mp4
+Si es vol fer sobre el video s'ha de preparar el fitxer mp4. Revisar aquesta documentació 
+per veure com treballar-ho https://labelstud.io/tags/video#Video-format
 
 ## Prerequisits
 
@@ -19,7 +13,7 @@ ffmpeg -i input_video.mp4 -c:v libx264 -profile:v high -level 4.0 -pix_fmt yuv42
 python3 --version
 
 # Dependències principals
-pip install label-studio
+# pip install label-studio només si s'instal·la en local
 pip install ultralytics
 pip install opencv-python
 pip install pillow
@@ -41,17 +35,23 @@ chmod +x setup_label_studio.sh
 ./setup_label_studio.sh
 ```
 
-Això crearà un entorn virtual i instal·larà Label Studio.
+```bash
+docker compose up -d
+```
 
 ### Pas 2: Iniciar Label Studio
 
+Opció local
+
 ```bash
-source label_studio_env/bin/activate
 label-studio start
 ```
 
-Obre el navegador a: http://localhost:8080
+Opcions:
 
+- Local : Obre el navegador a: http://localhost:8080
+- Contenidor:obre el navegador a: http://localhost:7070
+  
 ### Pas 3: Preparar les Dades
 
 ```bash
@@ -74,14 +74,14 @@ python3 preparar_dades.py
 ### Pas 4: Configurar Label Studio
 
 1. **Crear un projecte nou:**
-   - Ves a Label Studio (http://localhost:8080)
+   - Ves a Label Studio (http://localhost:xxxx)
    - Clica "Create Project"
    - Posa un nom: "Detecció Objectes Vídeo"
 
 2. **Configurar interfície d'anotació:**
    - Ves a Settings > Labeling Interface
    - Selecciona "Code"
-   - Copia el contingut de `label_studio_config.xml`
+   - Copia el contingut de `label_studio_config.xml` o crea una definició nova si ho consideres oportú
    - Modifica les etiquetes segons les teves necessitats. També ho pots incorporar pel label-studio i actualitzar el fitxer per guardar-t0ho i portar-ho a un altre equip.
      
      ```xml
@@ -112,7 +112,7 @@ python3 preparar_dades.py
 
 ### Pas 6: Exportar Anotacions  en format YOLO (RECOMANAT ✓)
 
-Quan hagis acabat d'anotar, tens **dues opcions** per exportar:
+Quan hagis acabat d'anotar, tens **moltes opcions** per exportar, pero amb molt de volum, les exportacions amb imatges fallen per timeout. Per tant millor utilitzar yolo sense imatges:
 
 1. Ves a "Export"
 2. Selecciona format **YOLO**
@@ -125,9 +125,7 @@ Obtindràs aquesta estructura:
 label_studio_export/
 ├── classes.txt      ← Llista de classes
 ├── notes.json       ← Metadata
-├── images/          ← Les teves imatges
-│   ├── frame_000000.jpg
-│   └── ...
+├── images/          ← Buida
 └── labels/          ← Anotacions en format YOLO
     ├── frame_000000.txt
     └── ...
@@ -145,7 +143,7 @@ python3 organitzar_dataset_yolo.py
 - Divideix el dataset en train/val/test (80%/10%/10%)
 - Crea l'estructura necessària per YOLOv8
 - Genera el fitxer `data.yaml`
-- Com a mínim tingues 100 imatges amb anotacions
+- Com a mínim tingues 10 imatges amb anotacions
 
 ### Pas 9: Entrenar YOLOv8
 
@@ -177,12 +175,14 @@ entrenar_yolo(
 ### Pas 10: Avaluar Resultats
 
 **Mètriques importants:**
+
 - **mAP50**: Mean Average Precision al 50% IoU
 - **mAP50-95**: mAP des del 50% al 95% IoU (més estricte)
 - **Precision**: % de deteccions correctes
 - **Recall**: % d'objectes detectats
 
 **On trobar els resultats:**
+
 ```
 runs/detect/yolo_custom/
 ├── weights/
