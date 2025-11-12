@@ -1,0 +1,7 @@
+<View>
+  <Image name="image" value="$image" zoom="true" zoomControl="true" rotateControl="true"/>
+  <RectangleLabels name="label" toName="image">
+    
+    
+  <Label value="Jugador Local" background="#9effa0"/><Label value="Jugador Visitant" background="#D4380D"/></RectangleLabels>
+</View>
