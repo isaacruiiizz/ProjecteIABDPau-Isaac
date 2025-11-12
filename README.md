@@ -34,7 +34,7 @@ pip install pillow
 
 ## Workflow Complet
 
-### Pas 1: Instal·lació de Label Studio
+### Pas 1: Instal·lació de Label Studio en local no recomandat. Millor utilitzar el docker-compose i crear-ho com contenidor
 
 ```bash
 chmod +x setup_label_studio.sh
