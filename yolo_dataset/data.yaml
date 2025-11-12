@@ -1,0 +1,15 @@
+# Dataset per YOLOv8
+# Generat automàticament des de Label Studio (exportació YOLO)
+
+path: E:\repos\dorsals\labelstudio\yolo_dataset  # directori arrel del dataset
+train: images/train  # ruta relativa a 'path'
+val: images/val      # ruta relativa a 'path'
+test: images/test    # ruta relativa a 'path'
+
+# Nombre de classes
+nc: 2
+
+# Noms de les classes
+names:
+  0: Jugador Local
+  1: Jugador Visitant

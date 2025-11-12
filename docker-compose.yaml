@@ -1,0 +1,48 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: label-studio-postgres
+    environment:
+      - POSTGRES_DB=labelstudio
+      - POSTGRES_USER=labelstudio
+      - POSTGRES_PASSWORD=labelstudio_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labelstudio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    container_name: label-studio
+    ports:
+      - "7070:8080"
+    environment:
+      # Configuració de PostgreSQL
+      - DJANGO_DB=default
+      - POSTGRE_NAME=labelstudio
+      - POSTGRE_USER=labelstudio
+      - POSTGRE_PASSWORD=labelstudio_password
+      - POSTGRE_PORT=5432
+      - POSTGRE_HOST=postgres
+      # Altres configuracions
+      - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
+      - LABEL_STUDIO_URL=http://localhost:7070
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/data
+      - UWSGI_HTTP_TIMEOUT=600  # 10 minuts
+      - UWSGI_SOCKET_TIMEOUT=600
+    volumes:
+      # Persistència de dades i arxius
+      - ./label_studio_data:/label-studio/data:rw
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
