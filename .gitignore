@@ -2,4 +2,35 @@
 .vscode
 .venv
 venv/
-video_exemple.mp4
+
+# Secrets
+**/.env
+!**/.env.example
+ 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+ 
+# Node
+node_modules/
+dist/
+.next/
+ 
+# Training pipeline (dades locals, mai al repositori)
+training_pipeline/frames/
+training_pipeline/label_studio_data/
+training_pipeline/label_studio_export/
+training_pipeline/yolo_dataset/
+training_pipeline/runs/
+training_pipeline/tasks/
+ 
+# Models (pesos entrenats, van a MinIO no al repo)
+*.pt
+*.keras
+*.onnx
+ 
+# Misc
+.DS_Store
+*.log

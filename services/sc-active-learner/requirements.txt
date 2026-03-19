@@ -1,0 +1,1 @@
+# Dependències s'afegiran amb el ticket d'implementació de sc-active-learner
