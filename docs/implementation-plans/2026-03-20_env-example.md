@@ -3,7 +3,7 @@
 **Ticket:** PJM-15
 **Data:** 2026-03-20
 **Sprint:** Sprint 1 — Fonaments
-**Estat:** Pendent de confirmació
+**Estat:** Completat ✓ (2026-03-20)
 
 ---
 

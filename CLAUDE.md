@@ -21,6 +21,7 @@ Abans de qualsevol canvi significatiu (nou servei, nou mòdul, canvi d'esquema, 
 7. Reporta al final de cada fase què s'ha fet i si cal reiniciar algun servei
 8. Actualitza el pla a `**Estat:** Completat ✓ (YYYY-MM-DD)` un cop implementat
 9. Mou el ticket a `Done` amb una nota breu del que s'ha implementat
+10. Fes commit a `develop` de tots els canvis del ticket amb el missatge: `feat(<etiqueta>): <descripció breu> [<TICKET-ID>]`
 
 Aquesta directiva s'aplica sempre, independentment de com estigui formulada la petició.
 
@@ -48,38 +49,49 @@ ProjecteIABDPau-Isaac/
 │   ├── sc-api-gateway/                    ← FastAPI 3 capes, port 8000  [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← python:3.11-slim + curl + uvicorn
 │   │   ├── requirements.txt               ← [placeholder — PJM-18]
+│   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
 │   │       └── __init__.py
 │   ├── sc-video-manager/                  ← worker pur Redis, sense HTTP  [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← python:3.11-slim + ffmpeg + libgl1
 │   │   ├── requirements.txt               ← [placeholder]
+│   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
 │   │       └── __init__.py
 │   ├── sc-inference-worker/               ← worker GPU, BLPOP 2 cues  [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← nvidia/cuda:12.6.3-runtime-ubuntu22.04
 │   │   ├── requirements.txt               ← [placeholder]
+│   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
 │   │       └── __init__.py
 │   ├── sc-logic-aggregator/               ← [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← python:3.11-slim
 │   │   ├── requirements.txt               ← [placeholder]
+│   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
 │   │       └── __init__.py
 │   ├── sc-active-learner/                 ← [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← python:3.11-slim
 │   │   ├── requirements.txt               ← [placeholder]
+│   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
 │   │       └── __init__.py
 │   ├── sc-frontend/                       ← React + Vite + Tailwind, port 3000  [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← multistage: node:22-alpine build + serve
 │   │   ├── package.json                   ← [placeholder — PJM-20]
+│   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── index.html                     ← [placeholder — PJM-20]
-│   ├── sc-label-studio/                   ← [per crear — PJM-17] servei OPCIONAL, port 8081
-│   ├── sc-mongodb/                        ← [per crear — PJM-18] init scripts (01-init.js)
-│   ├── sc-redis/                          ← [per crear — PJM-15]
-│   ├── sc-object-storage/                 ← [per crear — PJM-16] MinIO
+│   ├── sc-label-studio/                   ← servei OPCIONAL, port 8081  [PJM-15 ✓]
+│   │   └── .env.example
+│   ├── sc-mongodb/                        ← [init scripts per crear — PJM-18]  [PJM-15 ✓]
+│   │   └── .env.example
+│   ├── sc-redis/                          ← [PJM-15 ✓]
+│   │   └── .env.example
+│   ├── sc-object-storage/                 ← MinIO  [PJM-15 ✓]
+│   │   └── .env.example
 │   ├── sc-prometheus/                     ← [per crear — Sprint 7] prometheus.yml
-│   ├── sc-grafana/                        ← [per crear — Sprint 7]
+│   ├── sc-grafana/                        ← [PJM-15 ✓]
+│   │   └── .env.example
 │   └── sc-dozzle/                         ← [per crear — Sprint 4]
 │
 └── training_pipeline/                     ← scripts manuals fora de Docker (no sistema live)
