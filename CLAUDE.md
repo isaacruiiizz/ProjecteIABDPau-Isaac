@@ -2,7 +2,12 @@
 
 ## Llegeix primer
 
-Abans de qualsevol acció, llegeix **`docs/specs.md`** sencer. Conté totes les decisions d'arquitectura. No inventes cap decisió que no hi estigui documentada.
+Abans de qualsevol acció, llegeix docs/specs/ — cada fitxer cobreix un àmbit concret.
+Llegeix només els fitxers rellevants per al ticket actual.
+
+Si tens qualsevol dubte el fitxer sencer amb més de 1900 linees es troba a `docs/specs.md`, allà està tot junt.
+
+No inventes cap decisió que no hi estigui documentada.
 
 Documenta tots els endpoints a **`docs/endpoints.md`** i totes les decisions tècniques a **`docs/decisions.md`** seguint les plantilles del punt 5 i 6 de l'spec.
 
@@ -39,7 +44,15 @@ ProjecteIABDPau-Isaac/
 ├── .gitignore
 │
 ├── docs/
-│   ├── specs.md                           ← especificacions completes — LLEGIR PRIMER
+│   ├── specs.md                           ← especificació completa unificada (>1900 línies)
+│   ├── specs/                             ← especificacions per àmbit — LLEGIR PRIMER
+│   │   ├── 01-arquitectura.md             ← visió general, serveis, comunicació
+│   │   ├── 02-logica-ia.md                ← pipeline IA, models, active learning
+│   │   ├── 03-infraestructura.md          ← Docker, MinIO, Redis, buckets
+│   │   ├── 04-seguretat-bd.md             ← JWT, autenticació, MongoDB, esquemes
+│   │   ├── 05-config.md                   ← variables d'entorn per servei (punt 2.13)
+│   │   ├── 06-projecte.md                 ← Jira, sprints, convencions
+│   │   └── 07-estructura.md               ← estructura de carpetes i fitxers
 │   ├── endpoints.md                       ← [per crear — PJM-18] registre d'endpoints
 │   ├── decisions.md                       ← [per crear — PJM-18] decisions tècniques
 │   └── implementation-plans/              ← un fitxer Markdown per ticket implementat
@@ -117,7 +130,14 @@ ProjecteIABDPau-Isaac/
 
 | Necessito... | Anar a... |
 |---|---|
-| Especificacions d'arquitectura | `docs/specs.md` |
+| Arquitectura i serveis | `docs/specs/01-arquitectura.md` |
+| Pipeline IA i active learning | `docs/specs/02-logica-ia.md` |
+| Docker, MinIO, Redis, buckets | `docs/specs/03-infraestructura.md` |
+| JWT, autenticació, MongoDB, esquemes | `docs/specs/04-seguretat-bd.md` |
+| Variables d'entorn per servei | `docs/specs/05-config.md` |
+| Jira, sprints, convencions | `docs/specs/06-projecte.md` |
+| Estructura de carpetes | `docs/specs/07-estructura.md` |
+| Especificació completa (referència) | `docs/specs.md` |
 | Historial de decisions tècniques | `docs/decisions.md` |
 | Plans d'implementació per ticket | `docs/implementation-plans/YYYY-MM-DD_nom.md` |
 | Endpoints documentats | `docs/endpoints.md` |
