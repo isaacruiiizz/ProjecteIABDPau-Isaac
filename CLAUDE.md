@@ -57,15 +57,28 @@ ProjecteIABDPau-Isaac/
 │   ├── decisions.md                       ← [per crear — PJM-18] decisions tècniques
 │   └── implementation-plans/              ← un fitxer Markdown per ticket implementat
 │       ├── 2026-03-19_docker-compose.md   ← PJM-14 ✓
-│       └── 2026-03-21_sc-label-studio-minio.md  ← PJM-17 ✓
+│       ├── 2026-03-21_sc-label-studio-minio.md  ← PJM-17 ✓
+│       └── 2026-03-22_sc-api-gateway-base.md    ← PJM-18 ✓
 │
 ├── services/
-│   ├── sc-api-gateway/                    ← FastAPI 3 capes, port 8000  [PJM-55 ✓]
+│   ├── sc-api-gateway/                    ← FastAPI 3 capes, port 8000  [PJM-55 ✓] [PJM-18 ✓]
 │   │   ├── Dockerfile                     ← python:3.11-slim + curl + uvicorn
-│   │   ├── requirements.txt               ← [placeholder — PJM-18]
+│   │   ├── requirements.txt               ← [PJM-18 ✓]
 │   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
-│   │       └── __init__.py
+│   │       ├── __init__.py
+│   │       ├── main.py                    ← entrypoint: setup_logging, lifespan, CORS, routers
+│   │       ├── config.py                  ← pydantic Settings (totes les vars d'entorn)
+│   │       ├── dependencies.py            ← auth_client + app_client Motor independents
+│   │       ├── schemas/                   ← CAPA 1: Pydantic (buit — propers tickets)
+│   │       │   └── __init__.py
+│   │       ├── repositories/              ← CAPA 2: accés a dades (buit — propers tickets)
+│   │       │   └── __init__.py
+│   │       ├── services/                  ← CAPA 3: lògica de negoci (buit — propers tickets)
+│   │       │   └── __init__.py
+│   │       └── routers/
+│   │           ├── __init__.py
+│   │           └── health.py              ← GET /health → {"status": "ok"}
 │   ├── sc-video-manager/                  ← worker pur Redis, sense HTTP  [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← python:3.11-slim + ffmpeg + libgl1
 │   │   ├── requirements.txt               ← [placeholder]
