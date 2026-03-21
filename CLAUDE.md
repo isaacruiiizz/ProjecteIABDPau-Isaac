@@ -56,7 +56,8 @@ ProjecteIABDPau-Isaac/
 │   ├── endpoints.md                       ← [per crear — PJM-18] registre d'endpoints
 │   ├── decisions.md                       ← [per crear — PJM-18] decisions tècniques
 │   └── implementation-plans/              ← un fitxer Markdown per ticket implementat
-│       └── 2026-03-19_docker-compose.md   ← PJM-14 ✓
+│       ├── 2026-03-19_docker-compose.md   ← PJM-14 ✓
+│       └── 2026-03-21_sc-label-studio-minio.md  ← PJM-17 ✓
 │
 ├── services/
 │   ├── sc-api-gateway/                    ← FastAPI 3 capes, port 8000  [PJM-55 ✓]
@@ -94,8 +95,10 @@ ProjecteIABDPau-Isaac/
 │   │   ├── package.json                   ← [placeholder — PJM-20]
 │   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── index.html                     ← [placeholder — PJM-20]
-│   ├── sc-label-studio/                   ← servei OPCIONAL, port 8081  [PJM-15 ✓]
-│   │   └── .env.example
+│   ├── sc-label-studio/                   ← servei OPCIONAL, port 8081  [PJM-15 ✓] [PJM-17 ✓]
+│   │   ├── .env.example
+│   │   └── init/
+│   │       └── setup-project.py           ← crea projecte LS i connecta MinIO S3
 │   ├── sc-mongodb/                        ← [init scripts per crear — PJM-18]  [PJM-15 ✓]
 │   │   └── .env.example
 │   ├── sc-redis/                          ← [PJM-15 ✓]

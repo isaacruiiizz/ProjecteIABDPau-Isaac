@@ -264,7 +264,7 @@ services:
     logging: *default-logging
 
   # ── Servei opcional: Label Studio ─────────────────────────────────────────
-  # S'aixeca manualment: docker compose --profile labeling up sc-label-studio
+  # S'aixeca manualment: docker compose --profile labeling up
   # NO és dependència de cap altre servei (punt 2.8 de l'spec)
 
   sc-label-studio:
@@ -278,6 +278,36 @@ services:
     networks:
       - sc-frontend-net
       - sc-backend-net
+    depends_on:
+      sc-object-storage:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    profiles:
+      - labeling
+    logging: *default-logging
+
+  sc-label-studio-init:
+    image: python:3.11-slim
+    restart: "no"
+    env_file: ./services/sc-label-studio/.env
+    environment:
+      LABEL_STUDIO_URL: http://sc-label-studio:8081
+    entrypoint: ["sh", "-c", "pip install requests -q && python3 /init/setup-project.py"]
+    volumes:
+      - ./services/sc-label-studio/init:/init:ro
+    networks:
+      - sc-frontend-net
+      - sc-backend-net
+    depends_on:
+      sc-label-studio:
+        condition: service_healthy
+      sc-object-storage:
+        condition: service_healthy
     profiles:
       - labeling
     logging: *default-logging
