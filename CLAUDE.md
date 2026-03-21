@@ -100,8 +100,16 @@ ProjecteIABDPau-Isaac/
 │   │   └── .env.example
 │   ├── sc-redis/                          ← [PJM-15 ✓]
 │   │   └── .env.example
-│   ├── sc-object-storage/                 ← MinIO  [PJM-15 ✓]
-│   │   └── .env.example
+│   ├── sc-object-storage/                 ← MinIO  [PJM-15 ✓] [PJM-16 ✓]
+│   │   ├── .env.example
+│   │   └── init/
+│   │       ├── create-buckets.sh          ← script init: 9 buckets + lifecycle + 5 usuaris IAM
+│   │       └── policies/                  ← polítiques IAM per servei (JSON)
+│   │           ├── sc-api-gateway.json
+│   │           ├── sc-video-manager.json
+│   │           ├── sc-inference-worker.json
+│   │           ├── sc-active-learner.json
+│   │           └── sc-label-studio.json
 │   ├── sc-prometheus/                     ← [per crear — Sprint 7] prometheus.yml
 │   ├── sc-grafana/                        ← [PJM-15 ✓]
 │   │   └── .env.example
