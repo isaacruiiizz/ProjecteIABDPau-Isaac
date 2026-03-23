@@ -3,9 +3,9 @@ import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
+import bcrypt as _bcrypt
 from jose import jwt
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from passlib.hash import bcrypt
 
 from app.config import settings
 from app.repositories import auth_repository, user_profile_repository
@@ -27,10 +27,14 @@ def _create_refresh_token_pair() -> tuple[str, str]:
     return raw, token_hash
 
 
+def _hash_password(password: str) -> str:
+    return _bcrypt.hashpw(password.encode(), _bcrypt.gensalt(12)).decode()
+
+
 def _verify_password(password: str, stored_hash: str, force_reset: bool) -> bool:
     if force_reset:
         return password == stored_hash
-    return bcrypt.verify(password, stored_hash)
+    return _bcrypt.checkpw(password.encode(), stored_hash.encode())
 
 
 async def login(
@@ -50,7 +54,7 @@ async def login(
     user_id = str(user["_id"])
 
     if force_reset:
-        new_hash = bcrypt.hash(password)
+        new_hash = _hash_password(password)
         await auth_repository.update_user_password(auth_db, user_id, new_hash)
         logger.info("force_reset completat per user_id=%s", user_id)
 

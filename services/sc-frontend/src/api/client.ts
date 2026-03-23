@@ -1,4 +1,8 @@
-import axios from 'axios';
+import axios, {
+  isAxiosError,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import useAuthStore from '../store/authStore';
 
 const apiClient = axios.create({
@@ -10,7 +14,7 @@ const apiClient = axios.create({
 
 // ── Request interceptor ──────────────────────────────────────────────────────
 // Afegeix el Bearer token a totes les peticions si n'hi ha un al store.
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = useAuthStore.getState().token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -35,21 +39,25 @@ function flushQueue(token: string | null, error: unknown = null) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  (response: AxiosResponse) => response,
+  async (error: unknown) => {
+    if (!isAxiosError(error)) return Promise.reject(error);
+
     const originalRequest = error.config;
 
-    // Evitar bucle infinit: si la 401 ve del propi /auth/refresh → logout directe
-    if (
-      error.response?.status === 401 &&
-      originalRequest.url?.includes('/auth/refresh')
-    ) {
-      useAuthStore.getState().clearToken();
-      window.location.href = '/login';
+    // Els endpoints d'auth gestionen els seus propis errors → no intentar refresh
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/');
+    if (error.response?.status === 401 && isAuthEndpoint) {
+      if (originalRequest?.url?.includes('/auth/refresh')) {
+        // Refresh fallit → sessió caducada → logout
+        useAuthStore.getState().clearToken();
+        window.location.href = '/login';
+      }
+      // Login fallit → deixar propagar l'error al catch del component
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest?._retry) {
       originalRequest._retry = true;
 
       if (isRefreshing) {
