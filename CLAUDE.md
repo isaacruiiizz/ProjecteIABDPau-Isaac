@@ -53,12 +53,14 @@ ProjecteIABDPau-Isaac/
 │   │   ├── 05-config.md                   ← variables d'entorn per servei (punt 2.13)
 │   │   ├── 06-projecte.md                 ← Jira, sprints, convencions
 │   │   └── 07-estructura.md               ← estructura de carpetes i fitxers
-│   ├── endpoints.md                       ← [per crear — PJM-18] registre d'endpoints
-│   ├── decisions.md                       ← [per crear — PJM-18] decisions tècniques
+│   ├── endpoints.md                       ← registre d'endpoints  [PJM-20 ✓]
+│   ├── decisions.md                       ← [per crear — pròxims tickets] decisions tècniques
 │   └── implementation-plans/              ← un fitxer Markdown per ticket implementat
 │       ├── 2026-03-19_docker-compose.md   ← PJM-14 ✓
 │       ├── 2026-03-21_sc-label-studio-minio.md  ← PJM-17 ✓
-│       └── 2026-03-22_sc-api-gateway-base.md    ← PJM-18 ✓
+│       ├── 2026-03-22_sc-api-gateway-base.md    ← PJM-18 ✓
+│       ├── 2026-03-22_sc-api-gateway-auth.md    ← PJM-19 ✓
+│       └── 2026-03-24_sc-frontend-login.md      ← PJM-20 ✓
 │
 ├── services/
 │   ├── sc-api-gateway/                    ← FastAPI 3 capes, port 8000  [PJM-55 ✓] [PJM-18 ✓]
@@ -108,11 +110,31 @@ ProjecteIABDPau-Isaac/
 │   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
 │   │       └── __init__.py
-│   ├── sc-frontend/                       ← React + Vite + Tailwind, port 3000  [PJM-55 ✓]
+│   ├── sc-frontend/                       ← React 18 + Vite + Tailwind, port 3000  [PJM-55 ✓] [PJM-20 ✓]
 │   │   ├── Dockerfile                     ← multistage: node:22-alpine build + serve
-│   │   ├── package.json                   ← [placeholder — PJM-20]
+│   │   ├── package.json                   ← React 18, Vite, Tailwind, Zustand, Axios, Lucide
+│   │   ├── vite.config.ts                 ← [PJM-20 ✓]
+│   │   ├── tailwind.config.ts             ← [PJM-20 ✓]
+│   │   ├── tsconfig*.json                 ← [PJM-20 ✓]
+│   │   ├── postcss.config.js              ← [PJM-20 ✓]
+│   │   ├── index.html                     ← [PJM-20 ✓]
 │   │   ├── .env.example                   ← [PJM-15 ✓]
-│   │   └── index.html                     ← [placeholder — PJM-20]
+│   │   └── src/
+│   │       ├── main.tsx                   ← entrypoint React
+│   │       ├── App.tsx                    ← BrowserRouter + rutes protegides
+│   │       ├── index.css                  ← directives Tailwind
+│   │       ├── types/
+│   │       │   └── auth.ts                ← LoginRequest, TokenResponse, AuthState
+│   │       ├── store/
+│   │       │   └── authStore.ts           ← Zustand (access token en memòria, mai localStorage)
+│   │       ├── api/
+│   │       │   ├── client.ts              ← axios + interceptor refresh automàtic
+│   │       │   └── auth.ts                ← login(), refreshToken()
+│   │       ├── components/
+│   │       │   └── ProtectedRoute.tsx     ← redirigeix /login si no autenticat
+│   │       └── pages/
+│   │           ├── LoginPage.tsx          ← formulari login → POST /auth/login
+│   │           └── DashboardPage.tsx      ← placeholder post-login + logout
 │   ├── sc-label-studio/                   ← servei OPCIONAL, port 8081  [PJM-15 ✓] [PJM-17 ✓]
 │   │   ├── .env.example
 │   │   └── init/
