@@ -70,15 +70,20 @@ ProjecteIABDPau-Isaac/
 │   │       ├── main.py                    ← entrypoint: setup_logging, lifespan, CORS, routers
 │   │       ├── config.py                  ← pydantic Settings (totes les vars d'entorn)
 │   │       ├── dependencies.py            ← auth_client + app_client Motor independents
-│   │       ├── schemas/                   ← CAPA 1: Pydantic (buit — propers tickets)
-│   │       │   └── __init__.py
-│   │       ├── repositories/              ← CAPA 2: accés a dades (buit — propers tickets)
-│   │       │   └── __init__.py
-│   │       ├── services/                  ← CAPA 3: lògica de negoci (buit — propers tickets)
-│   │       │   └── __init__.py
+│   │       ├── schemas/                   ← CAPA 1: Pydantic
+│   │       │   ├── __init__.py
+│   │       │   └── auth.py                ← LoginRequest, TokenResponse  [PJM-19 ✓]
+│   │       ├── repositories/              ← CAPA 2: accés a dades
+│   │       │   ├── __init__.py
+│   │       │   ├── auth_repository.py     ← users + refresh_tokens (sc-auth-db)  [PJM-19 ✓]
+│   │       │   └── user_profile_repository.py ← user_profiles (sc-app-db)  [PJM-19 ✓]
+│   │       ├── services/                  ← CAPA 3: lògica de negoci
+│   │       │   ├── __init__.py
+│   │       │   └── auth_service.py        ← login, refresh, JWT, bcrypt  [PJM-19 ✓]
 │   │       └── routers/
 │   │           ├── __init__.py
-│   │           └── health.py              ← GET /health → {"status": "ok"}
+│   │           ├── health.py              ← GET /health → {"status": "ok"}
+│   │           └── auth.py                ← POST /auth/login, POST /auth/refresh  [PJM-19 ✓]
 │   ├── sc-video-manager/                  ← worker pur Redis, sense HTTP  [PJM-55 ✓]
 │   │   ├── Dockerfile                     ← python:3.11-slim + ffmpeg + libgl1
 │   │   ├── requirements.txt               ← [placeholder]
