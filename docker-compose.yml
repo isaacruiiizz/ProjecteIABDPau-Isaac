@@ -62,7 +62,7 @@ services:
     restart: unless-stopped
     env_file: ./services/sc-redis/.env
     command: >
-      sh -c "redis-server --requirepass $${REDIS_PASSWORD:-}"
+      sh -c "redis-server $${REDIS_PASSWORD:+--requirepass $$REDIS_PASSWORD}"
     volumes:
       - sc-redis-data:/data
     networks:

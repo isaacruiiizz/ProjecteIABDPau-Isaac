@@ -139,8 +139,10 @@ ProjecteIABDPau-Isaac/
 │   │   ├── .env.example
 │   │   └── init/
 │   │       └── setup-project.py           ← crea projecte LS i connecta MinIO S3
-│   ├── sc-mongodb/                        ← [init scripts per crear — PJM-18]  [PJM-15 ✓]
-│   │   └── .env.example
+│   ├── sc-mongodb/                        ← [PJM-15 ✓]
+│   │   ├── .env.example
+│   │   └── init/
+│   │       └── 01-init.js                 ← índexos + seed admin (force_reset)
 │   ├── sc-redis/                          ← [PJM-15 ✓]
 │   │   └── .env.example
 │   ├── sc-object-storage/                 ← MinIO  [PJM-15 ✓] [PJM-16 ✓]
