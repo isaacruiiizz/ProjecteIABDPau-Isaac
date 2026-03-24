@@ -1,3 +1,5 @@
+import boto3
+import redis.asyncio as aioredis
 from bson import ObjectId
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,6 +14,12 @@ from app.schemas.auth import TokenPayload
 auth_client: AsyncIOMotorClient | None = None
 app_client: AsyncIOMotorClient | None = None
 
+# Redis async client — inicialitzat al lifespan
+redis_client: aioredis.Redis | None = None
+
+# boto3 S3 client (sync, s'usa amb asyncio.to_thread()) — inicialitzat al lifespan
+s3_client = None
+
 
 def get_auth_db() -> AsyncIOMotorDatabase:
     """Retorna la BD sc-auth-db (credencials, sessions). Usat via Depends()."""
@@ -21,6 +29,16 @@ def get_auth_db() -> AsyncIOMotorDatabase:
 def get_app_db() -> AsyncIOMotorDatabase:
     """Retorna la BD sc-app-db (partits, jugadors, equips). Usat via Depends()."""
     return app_client.get_default_database()
+
+
+def get_redis() -> aioredis.Redis:
+    """Retorna el client Redis async. Usat via Depends()."""
+    return redis_client
+
+
+def get_s3():
+    """Retorna el client S3 boto3 (sync). Usat via Depends()."""
+    return s3_client
 
 
 # ---------------------------------------------------------------------------

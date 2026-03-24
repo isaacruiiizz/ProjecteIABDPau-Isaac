@@ -1,6 +1,8 @@
 import logging
 from contextlib import asynccontextmanager
 
+import boto3
+import redis.asyncio as aioredis
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +11,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 import app.dependencies as deps
 from app.config import settings
-from app.routers import auth, health
+from app.routers import auth, health, labeling
 
 
 def setup_logging(service_name: str, sentry_dsn: str = None) -> None:
@@ -38,9 +40,19 @@ setup_logging("sc-api-gateway", settings.SENTRY_DSN or None)
 async def lifespan(app: FastAPI):
     deps.auth_client = AsyncIOMotorClient(settings.MONGO_AUTH_URI)
     deps.app_client = AsyncIOMotorClient(settings.MONGO_APP_URI)
+    deps.redis_client = aioredis.Redis(
+        host=settings.REDIS_HOST, port=settings.REDIS_PORT, decode_responses=False
+    )
+    deps.s3_client = boto3.client(
+        "s3",
+        endpoint_url=f"http{'s' if settings.MINIO_USE_SSL else ''}://{settings.MINIO_ENDPOINT}",
+        aws_access_key_id=settings.MINIO_ACCESS_KEY,
+        aws_secret_access_key=settings.MINIO_SECRET_KEY,
+    )
     yield
     deps.auth_client.close()
     deps.app_client.close()
+    await deps.redis_client.aclose()
 
 
 app = FastAPI(title="SmartChrono IP — API Gateway", lifespan=lifespan)
@@ -57,3 +69,4 @@ if settings.API_ENV == "development":
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(labeling.router)
