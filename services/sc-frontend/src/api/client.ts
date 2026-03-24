@@ -51,7 +51,9 @@ apiClient.interceptors.response.use(
       if (originalRequest?.url?.includes('/auth/refresh')) {
         // Refresh fallit → sessió caducada → logout
         useAuthStore.getState().clearToken();
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
       // Login fallit → deixar propagar l'error al catch del component
       return Promise.reject(error);
