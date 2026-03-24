@@ -10,6 +10,8 @@ export interface TokenResponse {
 
 export interface AuthState {
   token: string | null;
+  role: string | null;
   setToken: (token: string) => void;
+  setRole: (role: string | null) => void;
   clearToken: () => void;
 }
