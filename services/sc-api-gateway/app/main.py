@@ -41,7 +41,10 @@ async def lifespan(app: FastAPI):
     deps.auth_client = AsyncIOMotorClient(settings.MONGO_AUTH_URI)
     deps.app_client = AsyncIOMotorClient(settings.MONGO_APP_URI)
     deps.redis_client = aioredis.Redis(
-        host=settings.REDIS_HOST, port=settings.REDIS_PORT, decode_responses=False
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        password=settings.REDIS_PASSWORD or None,
+        decode_responses=False,
     )
     deps.s3_client = boto3.client(
         "s3",

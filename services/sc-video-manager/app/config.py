@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     # Redis
     REDIS_HOST: str = "sc-redis"
     REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = ""
     REDIS_QUEUE_VIDEO: str = "video_to_process"
     REDIS_QUEUE_FRAMES: str = "task_frames"
 
