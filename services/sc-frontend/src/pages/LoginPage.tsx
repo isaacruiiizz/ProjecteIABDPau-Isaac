@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Timer, LogIn, AlertCircle } from 'lucide-react';
 import { login } from '../api/auth';
 import useAuthStore from '../store/authStore';
+import { parseJwtRole } from '../utils/jwt';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const setToken = useAuthStore((state) => state.setToken);
+  const setRole  = useAuthStore((state) => state.setRole);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,6 +23,7 @@ export default function LoginPage() {
     try {
       const { access_token } = await login(email, password);
       setToken(access_token);
+      setRole(parseJwtRole(access_token));
       navigate('/', { replace: true });
     } catch {
       setError('Credencials incorrectes. Torna-ho a intentar.');

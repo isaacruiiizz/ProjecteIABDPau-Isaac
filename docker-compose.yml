@@ -98,7 +98,7 @@ services:
     logging: *default-logging
 
   sc-minio-init:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-02-08T19-14-21Z
     container_name: sc-minio-init
     depends_on:
       sc-object-storage:
@@ -252,7 +252,7 @@ services:
     logging: *default-logging
 
   sc-dozzle:
-    image: amir20/dozzle:latest
+    image: amir20/dozzle:v8.12.20
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -268,9 +268,11 @@ services:
   # NO és dependència de cap altre servei (punt 2.8 de l'spec)
 
   sc-label-studio:
-    image: heartexlabs/label-studio:latest
+    image: heartexlabs/label-studio:1.14.0
     restart: unless-stopped
     env_file: ./services/sc-label-studio/.env
+    environment:
+      AWS_ENDPOINT_URL: http://sc-object-storage:9000
     volumes:
       - sc-label-studio-data:/label-studio/data
     ports:
@@ -297,7 +299,7 @@ services:
     env_file: ./services/sc-label-studio/.env
     environment:
       LABEL_STUDIO_URL: http://sc-label-studio:8081
-    entrypoint: ["sh", "-c", "pip install requests -q && python3 /init/setup-project.py"]
+    entrypoint: ["sh", "-c", "pip install requests boto3 -q && python3 /init/setup-project.py"]
     volumes:
       - ./services/sc-label-studio/init:/init:ro
     networks:
