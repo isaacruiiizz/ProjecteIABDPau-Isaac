@@ -1,7 +1,7 @@
 # Pla d'implementació — Selector de color de samarreta des del frontend
 
 **Data:** 2026-03-26
-**Estat:** En Procés
+**Estat:** Completat ✓ (2026-03-26)
 
 ---
 
