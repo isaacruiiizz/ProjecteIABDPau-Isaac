@@ -1,7 +1,7 @@
 # Pla d'implementació — Pre-anotació automàtica del pipeline d'etiquetatge
 
 **Data:** 2026-03-25
-**Estat:** Pendent de confirmació
+**Estat:** En Procés
 
 ---
 
@@ -106,6 +106,10 @@ services/sc-inference-worker/app/
 #### 2a. `yolo_service.py`
 
 - Carrega `yolov8n.pt` des de MinIO `models/yolo/base/yolov8n.pt`
+  - **Model base:** YOLOv8n pre-entrenat amb COCO (80 classes, 3.2M paràmetres, mAP@50-95: 37.3)
+  - **COCO inclou la classe `person` (id 0)**, que és la que necessitem per detectar jugadors
+  - **Ús com a base per a fine-tuning:** el model s'usarà en pre-anotació _sense_ fine-tuning; un cop acumulades anotacions validades per l'etiquetador, es farà fine-tuning específic per a futbol sala (jugadors, àrbits, porters)
+  - Font oficial: [Ultralytics YOLOv8](https://docs.ultralytics.com/models/yolov8/) — `YOLO("yolov8n.pt")` el descarrega automàticament
 - Executa inferència sobre un frame (imatge PIL/numpy)
 - Retorna llista de deteccions: `[{"x1": 0.1, "y1": 0.2, "x2": 0.3, "y2": 0.4, "confidence": 0.87, "class_id": 0}]`
 - Filtra per classe 0 (`person`) i confiança > `INFERENCE_CONFIDENCE_THRESHOLD` (default: 0.3 per pre-anotació)
@@ -124,7 +128,7 @@ def classify(image: np.ndarray, detections: list[dict], own_color_hsv: tuple) ->
     """
 ```
 
-- `own_color_hsv`: color de la samarreta del nostre equip, configurable via `JERSEY_OWN_COLOR_HSV` (ex: `"120,80,150"`)
+- `own_color_hsv`: color de la samarreta del nostre equip, configurable via `JERSEY_OWN_COLOR_HSV`, posteriorment via frontend (ex: `"120,80,150"`)
 - `JERSEY_COLOR_THRESHOLD`: distància màxima en espai HSV (default: 30)
 - Si `JERSEY_OWN_COLOR_HSV` no està configurat → totes les deteccions reben `player_own` (comportament per defecte fins que es configuri)
 - Retalla el 40% superior del BB per evitar confusió amb shorts/gespa
@@ -239,7 +243,7 @@ LABEL_STUDIO_API_TOKEN=          # SECRET
 LABEL_STUDIO_SOURCE_STORAGE_ID=1
 ```
 
-**`docker-compose.yml`**: el sc-inference-worker afegirà `profiles: [labeling]` o bé s'executa sempre — a decidir a la implementació.
+**`docker-compose.yml`**: el sc-inference-worker afegirà `profiles: [labeling]`
 
 ---
 
@@ -263,7 +267,6 @@ numpy>=1.26.0
 
 | Decisió | Raó |
 |---|---|
-| Model `yolov8n` (nano) | Màxima velocitat per pre-anotació, no cal precisió màxima |
 | Classificació per color de samarreta (`player_own` / `others`) | Més precís que marcar-ho tot igual. `JERSEY_OWN_COLOR_HSV` configurable. Si no es configura, fallback a `player_own` per tot |
 | Confiança baixa (0.3) | Millor tenir deteccions de més (fàcil d'esborrar) que perdre jugadors (cal afegir-los) |
 | Reencua si task no existeix | La sync de LS pot trigar 1–5 segons. Retry amb backoff suau |
@@ -273,10 +276,10 @@ numpy>=1.26.0
 
 ## Ordre d'implementació
 
-1. Fase 3 — `.env.example` i `requirements.txt` (0.5h)
-2. Fase 2 — `sc-inference-worker` (estructura + serveis + worker) (3h)
-3. Fase 1 — `sc-video-manager` (afegir publicació Redis + LS sync) (1h)
-4. Fase 4 — Test end-to-end: pujar vídeo → verificar prediccions a LS (0.5h)
+1. Fase 3 — `.env.example` i `requirements.txt` 
+2. Fase 2 — `sc-inference-worker` (estructura + serveis + worker) 
+3. Fase 1 — `sc-video-manager` (afegir publicació Redis + LS sync) 
+4. Fase 4 — Test end-to-end: pujar vídeo → verificar prediccions a LS
 
 ---
 

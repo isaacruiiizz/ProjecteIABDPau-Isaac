@@ -72,7 +72,16 @@ def main() -> None:
 
         if job_type == "process_labeling":
             try:
-                process_labeling(payload, minio_client, settings.MINIO_BUCKET_LABELING_FRAMES)
+                process_labeling(
+                    payload,
+                    minio_client,
+                    settings.MINIO_BUCKET_LABELING_FRAMES,
+                    redis_client=redis_client,
+                    redis_queue_labeling="labeling_frames_to_infer",
+                    label_studio_url=settings.LABEL_STUDIO_URL,
+                    label_studio_api_token=settings.LABEL_STUDIO_API_TOKEN,
+                    label_studio_source_storage_id=settings.LABEL_STUDIO_SOURCE_STORAGE_ID,
+                )
             except Exception:
                 # L'error ja ha estat logat i enviat a Sentry dins process_labeling
                 pass

@@ -1,22 +1,71 @@
+import json
 import logging
-import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
+import redis
+import requests
 import sentry_sdk
 from minio import Minio
 
 logger = logging.getLogger(__name__)
 
 
-def process_labeling(payload: dict, minio_client: Minio, bucket_labeling_frames: str) -> int:
+def _publish_frame_to_redis(
+    redis_client: redis.Redis,
+    queue: str,
+    session_id: str,
+    minio_key: str,
+    frame_name: str,
+) -> None:
+    msg = json.dumps({
+        "session_id": session_id,
+        "minio_key": minio_key,
+        "frame_name": frame_name,
+    })
+    redis_client.lpush(queue, msg)
+
+
+def _trigger_label_studio_sync(
+    ls_url: str,
+    api_token: str,
+    storage_id: int,
+) -> None:
+    url = f"{ls_url.rstrip('/')}/api/storages/s3/{storage_id}/sync"
+    headers = {"Authorization": f"Token {api_token}"}
+    try:
+        resp = requests.post(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        logger.info('{"event":"ls_sync_triggered","storage_id":%d}', storage_id)
+    except requests.RequestException as exc:
+        logger.warning(
+            '{"event":"ls_sync_error","storage_id":%d,"error":"%s"}',
+            storage_id, str(exc)
+        )
+
+
+def process_labeling(
+    payload: dict,
+    minio_client: Minio,
+    bucket_labeling_frames: str,
+    redis_client: redis.Redis | None = None,
+    redis_queue_labeling: str = "labeling_frames_to_infer",
+    label_studio_url: str = "",
+    label_studio_api_token: str = "",
+    label_studio_source_storage_id: int = 0,
+) -> int:
     """
     Descarrega un vídeo de labeling-videos, extreu 1 frame cada frame_interval segons
     amb FFmpeg i puja els frames a labeling-frames.
 
-    No escriu res a MongoDB. No publica res a Redis.
+    Per cada frame pujat, publica un missatge a labeling_frames_to_infer (Redis)
+    perquè sc-inference-worker el pre-anoti amb YOLOv8n.
+
+    Un cop tots els frames pujats, dispara la sync del Source Storage de Label Studio.
+
+    No escriu res a MongoDB.
     Retorna el nombre de frames pujats.
     """
     session_id: str = payload["session_id"]
@@ -50,7 +99,7 @@ def process_labeling(payload: dict, minio_client: Minio, bucket_labeling_frames:
         if result.returncode != 0:
             raise RuntimeError(f"FFmpeg failed: {result.stderr[-500:]}")
 
-        # 3. Puja cada frame a labeling-frames
+        # 3. Puja cada frame a labeling-frames i publica a Redis
         frame_files = sorted(frames_dir.glob("frame_*.jpg"))
         uploaded = 0
         for frame_file in frame_files:
@@ -64,8 +113,27 @@ def process_labeling(payload: dict, minio_client: Minio, bucket_labeling_frames:
             )
             uploaded += 1
 
+            # Publica a Redis perquè sc-inference-worker pre-anoti el frame
+            if redis_client is not None:
+                _publish_frame_to_redis(
+                    redis_client,
+                    redis_queue_labeling,
+                    session_id,
+                    object_key,
+                    frame_file.name,
+                )
+
         logger.info('{"event":"labeling_done","session_id":"%s","frames_uploaded":%d}',
                     session_id, uploaded)
+
+        # 4. Dispara sync del Source Storage de Label Studio
+        if label_studio_url and label_studio_api_token and label_studio_source_storage_id:
+            _trigger_label_studio_sync(
+                label_studio_url,
+                label_studio_api_token,
+                label_studio_source_storage_id,
+            )
+
         return uploaded
 
     except Exception as exc:

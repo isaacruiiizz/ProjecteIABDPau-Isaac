@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     # FFmpeg
     VIDEO_FPS_DEFAULT: int = 25
 
+    # Label Studio
+    LABEL_STUDIO_URL: str = "http://sc-label-studio:8081"
+    LABEL_STUDIO_API_TOKEN: str = ""
+    LABEL_STUDIO_SOURCE_STORAGE_ID: int = 1
+
     # Sentry
     SENTRY_DSN: str = ""
 

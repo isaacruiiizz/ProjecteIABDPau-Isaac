@@ -87,6 +87,7 @@ services:
       - "9000:9000"   # S3 API (opcional, per gestió directa)
       - "9001:9001"   # MinIO Console
     networks:
+      - sc-frontend-net
       - sc-backend-net
       - sc-ai-net
     healthcheck:
@@ -196,6 +197,7 @@ services:
     env_file: ./services/sc-inference-worker/.env
     networks:
       - sc-ai-net
+      - sc-backend-net
     depends_on:
       sc-redis:
         condition: service_healthy
