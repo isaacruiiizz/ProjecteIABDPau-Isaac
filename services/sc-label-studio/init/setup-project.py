@@ -82,7 +82,7 @@ def wait_for_label_studio(max_retries: int = 30, delay: int = 10) -> None:
 
 
 def web_login(session: requests.Session, max_retries: int = 20, delay: int = 10) -> None:
-    """Login via web (CSRF). Deixa la sessió cookie activa per a les cridades API."""
+    """Login via web (CSRF) i obté el token d'API per a les crides autenticades."""
     for attempt in range(1, max_retries + 1):
         try:
             # 1. GET pàgina login per obtenir CSRF cookie
@@ -106,6 +106,18 @@ def web_login(session: requests.Session, max_retries: int = 20, delay: int = 10)
                 # Afegir CSRF a totes les peticions POST/PUT/DELETE
                 session.headers.update({"X-CSRFToken": session.cookies.get("csrftoken", csrf)})
                 print("Login web correcte, sessió activa.")
+
+                # Obtenir token d'API i afegir-lo com a capçalera Authorization
+                r_token = session.get(f"{LS_URL}/api/current-user/token", timeout=10)
+                if r_token.ok:
+                    api_token = r_token.json().get("token")
+                    if api_token:
+                        session.headers.update({"Authorization": f"Token {api_token}"})
+                        print("Token d'API obtingut correctament.")
+                    else:
+                        print("AVÍS: resposta de token buida, continuant amb sessió.", file=sys.stderr)
+                else:
+                    print(f"AVÍS: no s'ha pogut obtenir el token d'API ({r_token.status_code}), continuant amb sessió.", file=sys.stderr)
                 return
             print(f"Login fallat (url={r.url}, status={r.status_code}), reintentant... ({attempt}/{max_retries})")
         except requests.exceptions.RequestException as exc:
@@ -186,19 +198,7 @@ def configure_export_storage(session: requests.Session, project_id: int) -> None
     """Configura l'Export Storage S3 (datasets → exportació d'anotacions)."""
     ensure_export_prefix()
 
-    # Prova els endpoints possibles per a target/export storage
-    for endpoint in [
-        f"{LS_URL}/api/storages/s3export/",
-        f"{LS_URL}/api/storages/s3/?target=true",
-    ]:
-        r_check = session.get(endpoint)
-        if r_check.status_code != 404:
-            break
-    else:
-        print("ERROR: cap endpoint d'export storage disponible", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Usant endpoint export storage: {endpoint}")
+    endpoint = f"{LS_URL}/api/storages/export/s3"
     payload = {
         "project": project_id,
         "title": "MinIO — datasets",
@@ -241,7 +241,7 @@ def main() -> None:
         return len(items) > 0
 
     source_exists = storage_exists(f"{LS_URL}/api/storages/s3/?project={project_id}")
-    export_exists = storage_exists(f"{LS_URL}/api/storages/s3export/?project={project_id}")
+    export_exists = storage_exists(f"{LS_URL}/api/storages/export/s3?project={project_id}")
 
     if not source_exists:
         configure_source_storage(session, project_id)
