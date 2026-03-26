@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str
     MINIO_SECRET_KEY: str
     MINIO_USE_SSL: bool = False
+    # URL pública de MinIO accessible des del navegador (ex: http://localhost:9000).
+    # Si és buit, s'usa MINIO_ENDPOINT (vàlid per a entorns sense accés extern).
+    MINIO_PUBLIC_URL: str = ""
 
     # Sentry
     SENTRY_DSN: str = ""

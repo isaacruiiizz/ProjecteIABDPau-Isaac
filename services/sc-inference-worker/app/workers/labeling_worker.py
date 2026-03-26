@@ -112,12 +112,17 @@ def run(stop_event: threading.Event) -> None:
             continue
 
         # 3. Classifica player_own / others per color de samarreta
+        # Prioritat: valor del payload (configurat per l'usuari via frontend)
+        # Fallback: variable d'entorn JERSEY_OWN_COLOR_HSV
+        jersey_color = payload.get("jersey_own_color_hsv") or settings.JERSEY_OWN_COLOR_HSV
+        jersey_threshold = int(payload.get("jersey_color_threshold") or settings.JERSEY_COLOR_THRESHOLD)
+
         img_array = yolo_service.get_image_array(image_bytes)
         detections = jersey_classifier.classify(
             image=img_array,
             detections=detections,
-            own_color_hsv_str=settings.JERSEY_OWN_COLOR_HSV,
-            threshold=settings.JERSEY_COLOR_THRESHOLD,
+            own_color_hsv_str=jersey_color,
+            threshold=jersey_threshold,
         )
 
         # 4. Cerca task_id a Label Studio
