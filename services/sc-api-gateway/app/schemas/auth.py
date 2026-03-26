@@ -9,3 +9,10 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class TokenPayload(BaseModel):
+    sub: str          # user_id
+    role: str         # admin | coach | assistant | player
+    team_ids: list[str]
+    exp: int

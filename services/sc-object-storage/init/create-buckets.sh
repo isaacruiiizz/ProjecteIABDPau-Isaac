@@ -15,20 +15,26 @@ done
 
 # 3. Lifecycle — buckets amb retenció de 30 dies
 for bucket in raw-videos labeling-videos labeling-frames; do
-  mc ilm add --expiry-days 30 "$ALIAS/$bucket"
+  mc ilm add --expiry-days 30 "$ALIAS/$bucket" || true
 done
 
 # 4. Lifecycle — buckets amb retenció de 7 dies
 for bucket in pending-frames processed-frames; do
-  mc ilm add --expiry-days 7 "$ALIAS/$bucket"
+  mc ilm add --expiry-days 7 "$ALIAS/$bucket" || true
 done
 
-# 5. Crear usuaris IAM per servei (|| true: idempotent si ja existeixen)
-mc admin user add "$ALIAS" sc-api-gateway      "$SC_API_GATEWAY_MINIO_PASSWORD"      || true
-mc admin user add "$ALIAS" sc-video-manager    "$SC_VIDEO_MANAGER_MINIO_PASSWORD"    || true
-mc admin user add "$ALIAS" sc-inference-worker "$SC_INFERENCE_WORKER_MINIO_PASSWORD" || true
-mc admin user add "$ALIAS" sc-active-learner   "$SC_ACTIVE_LEARNER_MINIO_PASSWORD"   || true
-mc admin user add "$ALIAS" sc-label-studio     "$SC_LABEL_STUDIO_MINIO_PASSWORD"     || true
+# 5. Crear/actualitzar usuaris IAM per servei (add crea, passwd actualitza si ja existeix)
+create_or_update_user() {
+  USER=$1
+  PASS=$2
+  mc admin user add "$ALIAS" "$USER" "$PASS" 2>/dev/null || \
+  mc admin user passwd "$ALIAS" "$USER" "$PASS"
+}
+create_or_update_user sc-api-gateway      "$SC_API_GATEWAY_MINIO_PASSWORD"
+create_or_update_user sc-video-manager    "$SC_VIDEO_MANAGER_MINIO_PASSWORD"
+create_or_update_user sc-inference-worker "$SC_INFERENCE_WORKER_MINIO_PASSWORD"
+create_or_update_user sc-active-learner   "$SC_ACTIVE_LEARNER_MINIO_PASSWORD"
+create_or_update_user sc-label-studio     "$SC_LABEL_STUDIO_MINIO_PASSWORD"
 
 # 6. Carregar i assignar polítiques
 for service in sc-api-gateway sc-video-manager sc-inference-worker sc-active-learner sc-label-studio; do

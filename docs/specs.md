@@ -53,7 +53,7 @@ Utilitzarem les ultimes versions suportades de tot, i si hi han components/llibr
 | Servei | Responsabilitat Tècnica | Stack Intern |
 | :--- | :--- | :--- |
 | **`sc-api-gateway`** | **Punt d'entrada REST**. Gestiona el CRUD de MongoDB, l'autenticació i l'enviament de "Jobs" de processament a Redis. | FastAPI, Uvicorn, Motor (MongoDB Driver) |
-| **`sc-video-manager`** | **Ingestió i Muntatge:** Talla el vídeo original en frames (.jpg) a la carpeta compartida /frames. Un cop finalitzat el procés, re-munta un nou vídeo sobreposant els bounding boxes i IDs. | FFmpeg, OpenCV, PyAV |
+| **`sc-video-manager`** | **Ingestió i Muntatge:** Talla el vídeo original en frames (.jpg). Un cop finalitzat el procés, re-munta un nou vídeo sobreposant els bounding boxes i IDs. | FFmpeg, OpenCV, PyAV |
 | **`sc-object-storage`**| **S3 Storage:** Servidor d'objectes per guardar frames, vídeos i models de forma centralitzada. | MinIO Server (S3 API) |
 | **`sc-inference-worker`** | **Inferència d'IA:** Escolta la cua `pending_frames`. Executa YOLOv8 (jugadors) i la CNN personalitzada (dorsals) utilitzant la GPU (8GB VRAM). | PyTorch, CUDA 12.6, TensorFlow/Keras, Ultralytics |
 | **`sc-logic-aggregator`** | **Tracking i Temps:** Rep els JSON de detecció de l'inference-worker. Implementa la lògica de ByteTrack per mantenir la identitat i calcula el temps de permanència a "zona activa". | FilterPy, NumPy, Pandas (Time-series) |
