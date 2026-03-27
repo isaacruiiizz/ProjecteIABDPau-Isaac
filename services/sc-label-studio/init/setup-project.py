@@ -208,7 +208,7 @@ def configure_export_storage(session: requests.Session, project_id: int) -> None
         "project": project_id,
         "title": "MinIO — datasets",
         "bucket": BUCKET_DST,
-        "prefix": "yolo/v1/",
+        "prefix": "yolo/v1",
         "aws_access_key_id": MINIO_KEY,
         "aws_secret_access_key": MINIO_SEC,
         "endpoint_url": MINIO_URL,

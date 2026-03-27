@@ -210,6 +210,15 @@ def process_labeling(
                 minio_public_url,
             )
 
+        # 6. Elimina el vídeo original de labeling-videos (ja no cal un cop els frames estan pujats)
+        try:
+            minio_client.remove_object(minio_bucket, minio_key)
+            logger.info('{"event":"source_video_deleted","session_id":"%s","bucket":"%s","key":"%s"}',
+                        session_id, minio_bucket, minio_key)
+        except Exception as exc:
+            logger.warning('{"event":"source_video_delete_error","session_id":"%s","error":"%s"}',
+                           session_id, str(exc))
+
         return uploaded
 
     except Exception as exc:
