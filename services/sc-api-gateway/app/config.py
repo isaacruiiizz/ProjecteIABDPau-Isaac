@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # Si és buit, s'usa MINIO_ENDPOINT (vàlid per a entorns sense accés extern).
     MINIO_PUBLIC_URL: str = ""
 
+    # Label Studio
+    LABEL_STUDIO_URL: str = "http://sc-label-studio:8081"
+    LABEL_STUDIO_API_TOKEN: str = ""
+    LABEL_STUDIO_PROJECT_ID: int = 1
+
     # Sentry
     SENTRY_DSN: str = ""
 

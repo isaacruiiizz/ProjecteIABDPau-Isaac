@@ -3,12 +3,15 @@ import logging
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 
+from app.config import settings
 from app.dependencies import get_redis, get_s3, require_roles
 from app.schemas.labeling import (
     LabelingFrameResponse,
     LabelingStartRequest,
     LabelingStartResponse,
     LabelingUploadResponse,
+    LsStatsResponse,
+    LsTasksClearResponse,
 )
 from app.services import labeling_service
 
@@ -99,3 +102,31 @@ async def start_labeling(
         redis=redis,
     )
     return LabelingStartResponse(**result)
+
+
+@router.get("/ls-stats", response_model=LsStatsResponse)
+async def get_ls_stats(
+    _user=Depends(require_roles("admin")),
+):
+    """Retorna el total de tasques i les ja anotades a Label Studio."""
+    result = await labeling_service.get_ls_stats(
+        ls_url=settings.LABEL_STUDIO_URL,
+        api_token=settings.LABEL_STUDIO_API_TOKEN,
+        project_id=settings.LABEL_STUDIO_PROJECT_ID,
+    )
+    return LsStatsResponse(**result)
+
+
+@router.delete("/ls-tasks", response_model=LsTasksClearResponse)
+async def clear_ls_tasks(
+    _user=Depends(require_roles("admin")),
+    s3=Depends(get_s3),
+):
+    """Esborra totes les tasques de Label Studio i tots els frames de labeling-frames."""
+    result = await labeling_service.clear_ls_tasks(
+        ls_url=settings.LABEL_STUDIO_URL,
+        api_token=settings.LABEL_STUDIO_API_TOKEN,
+        project_id=settings.LABEL_STUDIO_PROJECT_ID,
+        s3=s3,
+    )
+    return LsTasksClearResponse(**result)

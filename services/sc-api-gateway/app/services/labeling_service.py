@@ -3,6 +3,7 @@ import json
 import logging
 from uuid import uuid4
 
+import httpx
 import redis.asyncio as aioredis
 
 logger = logging.getLogger(__name__)
@@ -136,3 +137,79 @@ async def start_labeling(
         len(frame_keys), video_key, jersey_own_color_hsv,
     )
     return {"status": "queued", "frames_queued": len(frame_keys)}
+
+
+async def get_ls_stats(ls_url: str, api_token: str, project_id: int) -> dict:
+    """
+    Retorna el total de tasques, quantes estan anotades (humà) i quantes
+    tenen prediccions (inference worker) al projecte de Label Studio.
+    """
+    headers = {"Authorization": f"Token {api_token}"}
+    base = ls_url.rstrip("/")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            project_resp, pred_resp = await asyncio.gather(
+                client.get(f"{base}/api/projects/{project_id}/", headers=headers),
+                client.get(
+                    f"{base}/api/predictions/",
+                    headers=headers,
+                    params={"project": project_id},
+                ),
+            )
+            project_resp.raise_for_status()
+            project_data = project_resp.json()
+            predicted = 0
+            if pred_resp.is_success:
+                pred_data = pred_resp.json()
+                # LS 1.14 retorna llista plana (no dict paginat)
+                if isinstance(pred_data, list):
+                    predicted = len(pred_data)
+                else:
+                    predicted = pred_data.get("count", 0)
+            return {
+                "total_tasks": project_data.get("task_number", 0),
+                "annotated_tasks": project_data.get("num_tasks_with_annotations", 0),
+                "predicted_tasks": predicted,
+            }
+    except Exception as exc:
+        logger.warning("get_ls_stats error: %s", str(exc))
+        return {"total_tasks": 0, "annotated_tasks": 0, "predicted_tasks": 0}
+
+
+def _delete_all_labeling_frames_sync(s3) -> int:
+    """Esborra tots els frames del bucket labeling-frames. Retorna el nombre d'objectes eliminats."""
+    deleted = 0
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=BUCKET_LABELING_FRAMES):
+        objects = [{"Key": obj["Key"]} for obj in page.get("Contents", [])]
+        if objects:
+            s3.delete_objects(Bucket=BUCKET_LABELING_FRAMES, Delete={"Objects": objects})
+            deleted += len(objects)
+    return deleted
+
+
+async def clear_ls_tasks(ls_url: str, api_token: str, project_id: int, s3) -> dict:
+    """
+    Esborra totes les tasques del projecte Label Studio i tots els frames
+    del bucket labeling-frames de MinIO, deixant el sistema net per a una
+    nova sessió d'etiquetatge.
+    """
+    headers = {"Authorization": f"Token {api_token}", "Content-Type": "application/json"}
+    url = f"{ls_url.rstrip('/')}/api/dm/actions?id=delete_tasks&project={project_id}"
+    body = {
+        "filters": {"conjunction": "and", "items": []},
+        "selectedItems": {"all": True, "excluded": []},
+        "project": project_id,
+    }
+    deleted_tasks = 0
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(url, headers=headers, json=body)
+            resp.raise_for_status()
+            deleted_tasks = resp.json().get("processed_items", 0)
+    except Exception as exc:
+        logger.warning("clear_ls_tasks LS error: %s", str(exc))
+
+    deleted_frames = await asyncio.to_thread(_delete_all_labeling_frames_sync, s3)
+    logger.info("clear_ls_tasks: deleted_tasks=%d deleted_frames=%d", deleted_tasks, deleted_frames)
+    return {"deleted": deleted_tasks, "deleted_frames": deleted_frames}

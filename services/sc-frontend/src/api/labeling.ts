@@ -41,6 +41,26 @@ export async function getLabelingFrame(
   return data;
 }
 
+export interface LsStatsResponse {
+  total_tasks: number;
+  annotated_tasks: number;
+  predicted_tasks: number;
+}
+
+export interface LsTasksClearResponse {
+  deleted: number;
+}
+
+export async function getLsStats(): Promise<LsStatsResponse> {
+  const { data } = await apiClient.get<LsStatsResponse>('/api/v1/labeling/ls-stats');
+  return data;
+}
+
+export async function clearLsTasks(): Promise<LsTasksClearResponse> {
+  const { data } = await apiClient.delete<LsTasksClearResponse>('/api/v1/labeling/ls-tasks');
+  return data;
+}
+
 export async function startLabeling(
   videoKey: string,
   jerseyOwnColorHsv: string | null,

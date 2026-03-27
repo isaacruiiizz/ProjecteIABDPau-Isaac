@@ -30,3 +30,14 @@ class LabelingStartRequest(BaseModel):
 class LabelingStartResponse(BaseModel):
     status: str
     frames_queued: int
+
+
+class LsStatsResponse(BaseModel):
+    total_tasks: int
+    annotated_tasks: int
+    predicted_tasks: int = 0
+
+
+class LsTasksClearResponse(BaseModel):
+    deleted: int
+    deleted_frames: int = 0

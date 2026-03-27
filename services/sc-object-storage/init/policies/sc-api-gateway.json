@@ -11,10 +11,10 @@
     },
     {
       "Effect": "Allow",
-      "Action": ["s3:GetObject"],
+      "Action": ["s3:GetObject", "s3:DeleteObject"],
       "Resource": [
-        "arn:aws:s3:::processed-videos/*",
-        "arn:aws:s3:::labeling-frames/*"
+        "arn:aws:s3:::labeling-frames/*",
+        "arn:aws:s3:::processed-videos/*"
       ]
     },
     {
