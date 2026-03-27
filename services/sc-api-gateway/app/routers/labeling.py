@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 
 from app.dependencies import get_redis, get_s3, require_roles
 from app.schemas.labeling import (
@@ -53,6 +54,27 @@ async def get_labeling_frame(
         s3=s3,
     )
     return LabelingFrameResponse(**result)
+
+
+@router.get("/frame-img")
+async def get_labeling_frame_img(
+    video_key: str = Query(...),
+    frame_number: int = Query(default=1, ge=1),
+    _user=Depends(require_roles("admin")),
+    s3=Depends(get_s3),
+):
+    """
+    Proxy: retorna els bytes JPEG d'un frame directament des de MinIO.
+    Evita problemes CORS en no exposar URLs de MinIO al navegador.
+    """
+    image_bytes = await labeling_service.get_labeling_frame_bytes(
+        video_key=video_key,
+        frame_number=frame_number,
+        s3=s3,
+    )
+    if image_bytes is None:
+        raise HTTPException(status_code=404, detail="Frame no trobat")
+    return Response(content=image_bytes, media_type="image/jpeg")
 
 
 @router.post("/start", response_model=LabelingStartResponse, status_code=202)

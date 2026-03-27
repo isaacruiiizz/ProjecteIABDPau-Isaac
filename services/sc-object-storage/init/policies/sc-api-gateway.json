@@ -12,7 +12,10 @@
     {
       "Effect": "Allow",
       "Action": ["s3:GetObject"],
-      "Resource": ["arn:aws:s3:::processed-videos/*"]
+      "Resource": [
+        "arn:aws:s3:::processed-videos/*",
+        "arn:aws:s3:::labeling-frames/*"
+      ]
     },
     {
       "Effect": "Allow",
@@ -20,7 +23,8 @@
       "Resource": [
         "arn:aws:s3:::raw-videos",
         "arn:aws:s3:::labeling-videos",
-        "arn:aws:s3:::processed-videos"
+        "arn:aws:s3:::processed-videos",
+        "arn:aws:s3:::labeling-frames"
       ]
     }
   ]

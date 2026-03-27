@@ -20,6 +20,7 @@ import {
   Play,
   Upload,
 } from 'lucide-react';
+import apiClient from '../api/client';
 import {
   getLabelingFrame,
   startLabeling,
@@ -36,6 +37,7 @@ export default function LabelingPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Estat upload ────────────────────────────────────────────────────────────
   const [file, setFile] = useState<File | null>(null);
@@ -68,7 +70,7 @@ export default function LabelingPage() {
 
   // ── Carrega i pinta un frame al canvas ─────────────────────────────────────
   const loadFrame = useCallback(
-    async (sessionId: string, frameNumber: number) => {
+    async (sessionId: string, frameNumber: number, retryCount = 0) => {
       if (!canvasRef.current) return;
       setFrameLoading(true);
       setFrameError(null);
@@ -77,15 +79,24 @@ export default function LabelingPage() {
         const { frame_url, total_frames } = await getLabelingFrame(sessionId, frameNumber);
 
         if (total_frames === 0) {
-          setFrameError('No s\'han trobat frames. Espera que el vídeo acabi de processar-se.');
+          if (retryCount < 10) {
+            setFrameError(`Processant vídeo... (${retryCount + 1}/10)`);
+            setFrameLoading(false);
+            retryTimerRef.current = setTimeout(
+              () => loadFrame(sessionId, frameNumber, retryCount + 1),
+              3000,
+            );
+            return;
+          }
+          setFrameError('No s\'han trobat frames. El vídeo no s\'ha pogut processar.');
           return;
         }
         setTotalFrames(total_frames);
 
-        // Descarrega la imatge com a blob (evita problemes CORS amb getImageData)
-        const resp = await fetch(frame_url);
-        if (!resp.ok) throw new Error(`Error en carregar el frame: ${resp.status}`);
-        const blob = await resp.blob();
+        // Descarrega la imatge via apiClient (JWT inclòs) → blob
+        // frame_url és una ruta relativa de l'API gateway, no una URL MinIO directa
+        const imgResp = await apiClient.get<Blob>(frame_url, { responseType: 'blob' });
+        const blob = imgResp.data;
         const objectUrl = URL.createObjectURL(blob);
 
         const img = new Image();
@@ -112,9 +123,17 @@ export default function LabelingPage() {
     [],
   );
 
+  // Cancel·la el retry timer en desmuntar el component
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
+
   // Carrega el primer frame representatiu quan tenim un upload exitós
   useEffect(() => {
     if (!uploadResult) return;
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     loadFrame(uploadResult.session_id, representativeFrameNumbers[0] || 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadResult]);

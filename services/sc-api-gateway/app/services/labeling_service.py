@@ -1,12 +1,9 @@
 import asyncio
 import json
 import logging
-from urllib.parse import urlparse
 from uuid import uuid4
 
 import redis.asyncio as aioredis
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +28,6 @@ def _list_frame_keys_sync(video_key: str, s3) -> list[str]:
                 keys.append(obj["Key"])
     return sorted(keys)
 
-
-def _presigned_url_sync(key: str, s3) -> str:
-    """Genera una URL pre-signada per a un frame. Reescriu l'host si MINIO_PUBLIC_URL és configurat."""
-    url: str = s3.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": BUCKET_LABELING_FRAMES, "Key": key},
-        ExpiresIn=FRAME_PRESIGNED_EXPIRY_S,
-    )
-    if settings.MINIO_PUBLIC_URL:
-        parsed = urlparse(url)
-        internal = f"{parsed.scheme}://{parsed.netloc}"
-        url = url.replace(internal, settings.MINIO_PUBLIC_URL.rstrip("/"), 1)
-    return url
 
 
 async def upload_labeling_video(
@@ -79,29 +63,38 @@ async def upload_labeling_video(
 
 async def get_labeling_frame(video_key: str, frame_number: int, s3) -> dict:
     """
-    Retorna la URL pre-signada d'un frame i el total de frames de la sessió.
+    Retorna la URL relativa del proxy de l'API gateway per al frame i el total de frames.
 
-    Args:
-        video_key:    session_id del vídeo d'etiquetatge
-        frame_number: índex 1-based del frame sol·licitat
-        s3:           client boto3 S3
+    La URL apunta a GET /api/v1/labeling/frame-img?video_key=...&frame_number=N
+    perquè el frontend la carregui via apiClient (amb JWT), evitant problemes CORS
+    en accedir directament a MinIO des del navegador.
 
     Returns:
-        {"frame_url": "<presigned_url>", "total_frames": N}
+        {"frame_url": "/api/v1/labeling/frame-img?video_key=...&frame_number=N", "total_frames": N}
     """
     frame_keys = await asyncio.to_thread(_list_frame_keys_sync, video_key, s3)
     total_frames = len(frame_keys)
 
-    if total_frames == 0:
-        return {"frame_url": "", "total_frames": 0}
-
-    # Clamp frame_number a [1, total_frames]
-    idx = max(0, min(frame_number - 1, total_frames - 1))
-    frame_key = frame_keys[idx]
-
-    frame_url = await asyncio.to_thread(_presigned_url_sync, frame_key, s3)
-
+    frame_url = (
+        f"/api/v1/labeling/frame-img?video_key={video_key}&frame_number={frame_number}"
+    )
     return {"frame_url": frame_url, "total_frames": total_frames}
+
+
+def _get_frame_bytes_sync(video_key: str, frame_number: int, s3) -> bytes | None:
+    """Descarrega els bytes d'un frame concret de MinIO."""
+    keys = _list_frame_keys_sync(video_key, s3)
+    if not keys:
+        return None
+    idx = max(0, min(frame_number - 1, len(keys) - 1))
+    key = keys[idx]
+    response = s3.get_object(Bucket=BUCKET_LABELING_FRAMES, Key=key)
+    return response["Body"].read()
+
+
+async def get_labeling_frame_bytes(video_key: str, frame_number: int, s3) -> bytes | None:
+    """Retorna els bytes JPEG d'un frame per al proxy de l'API gateway."""
+    return await asyncio.to_thread(_get_frame_bytes_sync, video_key, frame_number, s3)
 
 
 async def start_labeling(

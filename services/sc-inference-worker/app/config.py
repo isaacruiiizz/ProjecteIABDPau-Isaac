@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     MINIO_BUCKET_FEEDBACK: str = "feedback-data"
     MINIO_BUCKET_MODELS: str = "models"
     MINIO_BUCKET_LABELING_FRAMES: str = "labeling-frames"
+    MINIO_MODEL_KEY: str = "yolo/base/yolov8n.pt"  # clau del model base dins el bucket models
 
     # IA — producció
     YOLO_MODEL_PATH: str = "yolo/weights/v1.pt"

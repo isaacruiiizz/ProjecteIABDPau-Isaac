@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     LABEL_STUDIO_URL: str = "http://sc-label-studio:8081"
     LABEL_STUDIO_API_TOKEN: str = ""
     LABEL_STUDIO_SOURCE_STORAGE_ID: int = 1
+    MINIO_PUBLIC_URL: str = "http://localhost:9000"
 
     # Sentry
     SENTRY_DSN: str = ""

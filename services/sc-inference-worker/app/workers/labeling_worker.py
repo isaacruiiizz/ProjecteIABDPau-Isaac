@@ -45,6 +45,7 @@ def _build_minio_client() -> Minio:
         access_key=settings.MINIO_ACCESS_KEY,
         secret_key=settings.MINIO_SECRET_KEY,
         secure=settings.MINIO_USE_SSL,
+        region="us-east-1",  # evita la crida GetBucketLocation (no inclosa a la política IAM)
     )
 
 
@@ -57,8 +58,20 @@ def run(stop_event: threading.Event) -> None:
 
     redis_client = _build_redis_client()
     minio_client = _build_minio_client()
+
+    # Descarrega el model de MinIO a /tmp per evitar dependència de xarxa externa
+    model_local_path = "/tmp/yolov8n.pt"
+    logger.info('{"event":"yolo_model_download_start","bucket":"%s","key":"%s"}',
+                settings.MINIO_BUCKET_MODELS, settings.MINIO_MODEL_KEY)
+    minio_client.fget_object(
+        settings.MINIO_BUCKET_MODELS,
+        settings.MINIO_MODEL_KEY,
+        model_local_path,
+    )
+    logger.info('{"event":"yolo_model_download_done","path":"%s"}', model_local_path)
+
     yolo_service = YoloService(
-        model_path="yolov8n.pt",
+        model_path=model_local_path,
         confidence=settings.INFERENCE_LABELING_CONFIDENCE,
     )
     ls_service = LabelStudioService(

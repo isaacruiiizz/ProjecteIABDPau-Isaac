@@ -33,6 +33,10 @@ MINIO_KEY   = os.environ["MINIO_ACCESS_KEY"]
 MINIO_SEC   = os.environ["MINIO_SECRET_KEY"]
 BUCKET_SRC  = os.environ["MINIO_BUCKET_FRAMES"]
 BUCKET_DST  = os.environ["MINIO_BUCKET_DATASETS"]
+# URL accessible des del navegador per a les URLs pre-signades de MinIO.
+# host.docker.internal:9000 funciona tant des de contenidors Docker com des del navegador
+# (Docker Desktop el mapeja a 127.0.0.1 al fitxer hosts de Windows).
+MINIO_PRESIGN_ENDPOINT = os.environ.get("MINIO_PRESIGN_ENDPOINT", "http://host.docker.internal:9000").rstrip("/")
 
 PROJECT_NAME = "SmartChrono — Etiquetatge de Jugadors"
 
@@ -160,10 +164,11 @@ def configure_source_storage(session: requests.Session, project_id: int) -> None
         "prefix": "",
         "aws_access_key_id": MINIO_KEY,
         "aws_secret_access_key": MINIO_SEC,
-        "endpoint_url": MINIO_URL,
+        "s3_endpoint": MINIO_PRESIGN_ENDPOINT,
         "region_name": "us-east-1",
-        "use_blob_urls": False,
+        "use_blob_urls": True,
         "recursive_scan": True,
+        "presign_ttl": 300,
     }
     r = session.post(f"{LS_URL}/api/storages/s3/", json=payload)
     if not r.ok:

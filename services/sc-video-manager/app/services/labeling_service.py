@@ -1,8 +1,10 @@
+import base64
 import json
 import logging
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 import redis
@@ -46,6 +48,78 @@ def _trigger_label_studio_sync(
         )
 
 
+def _patch_session_task_urls(
+    ls_url: str,
+    api_token: str,
+    session_id: str,
+    minio_public_url: str,
+    project_id: int = 1,
+    max_wait_s: int = 30,
+) -> None:
+    """
+    Actualitza les URLs de les tasques de Label Studio d'una sessió per apuntar
+    al MinIO públic (accessible des del navegador) en lloc de l'endpoint intern.
+
+    Label Studio genera `/tasks/N/presign/?fileuri=BASE64(s3://...)` amb l'endpoint
+    intern de MinIO (sc-object-storage:9000), que el navegador no pot resoldre.
+    Convertim-les a `{minio_public_url}/labeling-frames/{session_id}/{frame}`.
+    """
+    ls_url = ls_url.rstrip("/")
+    headers = {"Authorization": f"Token {api_token}", "Content-Type": "application/json"}
+    target_prefix = f"s3://labeling-frames/{session_id}/"
+
+    # Espera que el sync hagi creat les tasques (fins a max_wait_s)
+    deadline = time.time() + max_wait_s
+    tasks = []
+    while time.time() < deadline:
+        try:
+            resp = requests.get(
+                f"{ls_url}/api/tasks/",
+                headers=headers,
+                params={"project": project_id, "page_size": 500},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            all_tasks = data.get("tasks", data) if isinstance(data, dict) else data
+            tasks = [
+                t for t in all_tasks
+                if "fileuri=" in t.get("data", {}).get("image", "")
+            ]
+            if tasks:
+                break
+        except requests.RequestException:
+            pass
+        time.sleep(3)
+
+    patched = 0
+    for task in tasks:
+        img = task["data"].get("image", "")
+        if "fileuri=" not in img:
+            continue
+        b64 = img.split("fileuri=")[-1]
+        try:
+            s3_uri = base64.b64decode(b64 + "==").decode("utf-8", errors="ignore").rstrip("\x00")
+            if not s3_uri.startswith(target_prefix):
+                continue
+            key = s3_uri.replace("s3://labeling-frames/", "")
+            new_url = f"{minio_public_url.rstrip('/')}/labeling-frames/{key}"
+            resp = requests.patch(
+                f"{ls_url}/api/tasks/{task['id']}/",
+                headers=headers,
+                json={"data": {"image": new_url}},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            patched += 1
+        except Exception as exc:
+            logger.warning('{"event":"ls_patch_task_error","task_id":%d,"error":"%s"}',
+                           task["id"], str(exc))
+
+    logger.info('{"event":"ls_task_urls_patched","session_id":"%s","patched":%d}',
+                session_id, patched)
+
+
 def process_labeling(
     payload: dict,
     minio_client: Minio,
@@ -55,6 +129,7 @@ def process_labeling(
     label_studio_url: str = "",
     label_studio_api_token: str = "",
     label_studio_source_storage_id: int = 0,
+    minio_public_url: str = "",
 ) -> int:
     """
     Descarrega un vídeo de labeling-videos, extreu 1 frame cada frame_interval segons
@@ -99,7 +174,9 @@ def process_labeling(
         if result.returncode != 0:
             raise RuntimeError(f"FFmpeg failed: {result.stderr[-500:]}")
 
-        # 3. Puja cada frame a labeling-frames i publica a Redis
+        # 3. Puja cada frame a labeling-frames
+        # No es publica a Redis aquí — l'usuari selecciona el color de samarreta
+        # al frontend i prem "Iniciar etiquetatge", que crida POST /api/v1/labeling/start
         frame_files = sorted(frames_dir.glob("frame_*.jpg"))
         uploaded = 0
         for frame_file in frame_files:
@@ -113,16 +190,6 @@ def process_labeling(
             )
             uploaded += 1
 
-            # Publica a Redis perquè sc-inference-worker pre-anoti el frame
-            if redis_client is not None:
-                _publish_frame_to_redis(
-                    redis_client,
-                    redis_queue_labeling,
-                    session_id,
-                    object_key,
-                    frame_file.name,
-                )
-
         logger.info('{"event":"labeling_done","session_id":"%s","frames_uploaded":%d}',
                     session_id, uploaded)
 
@@ -132,6 +199,15 @@ def process_labeling(
                 label_studio_url,
                 label_studio_api_token,
                 label_studio_source_storage_id,
+            )
+
+        # 5. Patch task URLs per a accés directe des del navegador
+        if label_studio_url and label_studio_api_token and minio_public_url:
+            _patch_session_task_urls(
+                label_studio_url,
+                label_studio_api_token,
+                session_id,
+                minio_public_url,
             )
 
         return uploaded

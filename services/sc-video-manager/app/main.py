@@ -81,6 +81,7 @@ def main() -> None:
                     label_studio_url=settings.LABEL_STUDIO_URL,
                     label_studio_api_token=settings.LABEL_STUDIO_API_TOKEN,
                     label_studio_source_storage_id=settings.LABEL_STUDIO_SOURCE_STORAGE_ID,
+                    minio_public_url=settings.MINIO_PUBLIC_URL,
                 )
             except Exception:
                 # L'error ja ha estat logat i enviat a Sentry dins process_labeling
