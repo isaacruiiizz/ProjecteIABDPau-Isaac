@@ -312,6 +312,8 @@ services:
         condition: service_healthy
       sc-object-storage:
         condition: service_healthy
+      sc-minio-init:
+        condition: service_completed_successfully
     profiles:
       - labeling
     logging: *default-logging
