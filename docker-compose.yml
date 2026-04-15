@@ -234,6 +234,7 @@ services:
         # Cal passar-les explícitament com a args perquè siguin disponibles
         # durant el `npm run build` dins del contenidor builder.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_LABEL_STUDIO_URL: ${VITE_LABEL_STUDIO_URL}
     restart: unless-stopped
     env_file: .env
     ports:
@@ -295,6 +296,8 @@ services:
       MINIO_PRESIGN_ENDPOINT: ${LABEL_STUDIO_MINIO_PRESIGN_ENDPOINT}
       MINIO_ACCESS_KEY: ${SC_LABEL_STUDIO_MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${SC_LABEL_STUDIO_MINIO_PASSWORD}
+      # URL pública de Label Studio — evita redireccions a localhost
+      LABEL_STUDIO_HOST: ${LABEL_STUDIO_HOST:-http://localhost:8081}
     volumes:
       - sc-label-studio-data:/label-studio/data
     ports:
