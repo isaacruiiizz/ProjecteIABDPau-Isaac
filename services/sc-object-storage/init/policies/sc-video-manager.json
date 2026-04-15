@@ -6,8 +6,14 @@
       "Action": ["s3:GetObject"],
       "Resource": [
         "arn:aws:s3:::raw-videos/*",
-        "arn:aws:s3:::labeling-videos/*",
         "arn:aws:s3:::pending-frames/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:::labeling-videos/*"
       ]
     },
     {
