@@ -43,4 +43,8 @@ for service in sc-api-gateway sc-video-manager sc-inference-worker sc-active-lea
   mc admin policy attach "$ALIAS" "policy-$service" --user "$service"
 done
 
+# 7. Política pública de lectura a labeling-frames perquè Label Studio
+#    pugui servir les imatges directament al navegador sense presign tokens.
+mc anonymous set download "$ALIAS/labeling-frames"
+
 echo "MinIO init completat: 9 buckets + lifecycle + 5 usuaris IAM"
