@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # Ex: "http://localhost:3000,http://smartchrono.asixsapa.cat:3000"
     CORS_ORIGINS: str = "http://localhost:3000"
 
+    # Cookie del refresh token: True requereix HTTPS. Posar False si HTTP.
+    COOKIE_SECURE: bool = False
+
     # Sentry
     SENTRY_DSN: str = ""
 

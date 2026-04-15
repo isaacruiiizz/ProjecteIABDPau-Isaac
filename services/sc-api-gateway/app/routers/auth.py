@@ -4,6 +4,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.config import settings
 from app.dependencies import get_app_db, get_auth_db
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.services import auth_service
@@ -21,8 +22,8 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         key=_COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
         path="/auth",
         max_age=_COOKIE_MAX_AGE,
     )
