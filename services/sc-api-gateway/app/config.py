@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     LABEL_STUDIO_API_TOKEN: str = ""
     LABEL_STUDIO_PROJECT_ID: int = 1
 
+    # CORS — llista separada per comes dels orígens permesos
+    # Ex: "http://localhost:3000,http://smartchrono.asixsapa.cat:3000"
+    CORS_ORIGINS: str = "http://localhost:3000"
+
     # Sentry
     SENTRY_DSN: str = ""
 
