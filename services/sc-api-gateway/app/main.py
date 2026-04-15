@@ -60,11 +60,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SmartChrono IP — API Gateway", lifespan=lifespan)
 
-# CORS només quan API_ENV=development (spec 03-infraestructura.md)
-if settings.API_ENV == "development":
+# CORS — orígens llegits de CORS_ORIGINS (separats per comes).
+# En producció, afegir el domini del frontend a la variable d'entorn.
+_cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+if _cors_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],
+        allow_origins=_cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
