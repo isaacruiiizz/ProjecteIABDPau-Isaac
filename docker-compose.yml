@@ -43,7 +43,7 @@ services:
   sc-mongodb:
     image: mongo:8
     restart: unless-stopped
-    env_file: ./services/sc-mongodb/.env
+    env_file: .env
     volumes:
       - sc-mongodb-data:/data/db
       - ./services/sc-mongodb/init:/docker-entrypoint-initdb.d:ro
@@ -60,7 +60,7 @@ services:
   sc-redis:
     image: redis:7-alpine
     restart: unless-stopped
-    env_file: ./services/sc-redis/.env
+    env_file: .env
     command: >
       sh -c "redis-server $${REDIS_PASSWORD:+--requirepass $$REDIS_PASSWORD}"
     volumes:
@@ -79,7 +79,7 @@ services:
   sc-object-storage:
     image: minio/minio:RELEASE.2025-01-20T14-49-07Z
     restart: unless-stopped
-    env_file: ./services/sc-object-storage/.env
+    env_file: .env
     command: server /data --console-address ":9001"
     volumes:
       - sc-minio-data:/data
@@ -106,8 +106,7 @@ services:
         condition: service_healthy
     volumes:
       - ./services/sc-object-storage/init:/init:ro
-    env_file:
-      - ./services/sc-object-storage/.env
+    env_file: .env
     entrypoint: ["/bin/sh", "/init/create-buckets.sh"]
     networks:
       - sc-backend-net
@@ -121,7 +120,10 @@ services:
       context: ./services/sc-api-gateway
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: ./services/sc-api-gateway/.env
+    env_file: .env
+    environment:
+      MINIO_ACCESS_KEY: ${SC_API_GATEWAY_MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${SC_API_GATEWAY_MINIO_PASSWORD}
     ports:
       - "8000:8000"
     networks:
@@ -149,7 +151,10 @@ services:
       context: ./services/sc-video-manager
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: ./services/sc-video-manager/.env
+    env_file: .env
+    environment:
+      MINIO_ACCESS_KEY: ${SC_VIDEO_MANAGER_MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${SC_VIDEO_MANAGER_MINIO_PASSWORD}
     networks:
       - sc-backend-net
     depends_on:
@@ -164,7 +169,7 @@ services:
       context: ./services/sc-logic-aggregator
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: ./services/sc-logic-aggregator/.env
+    env_file: .env
     networks:
       - sc-backend-net
     depends_on:
@@ -179,7 +184,10 @@ services:
       context: ./services/sc-active-learner
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: ./services/sc-active-learner/.env
+    env_file: .env
+    environment:
+      MINIO_ACCESS_KEY: ${SC_ACTIVE_LEARNER_MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${SC_ACTIVE_LEARNER_MINIO_PASSWORD}
     networks:
       - sc-backend-net
     depends_on:
@@ -194,7 +202,10 @@ services:
       context: ./services/sc-inference-worker
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: ./services/sc-inference-worker/.env
+    env_file: .env
+    environment:
+      MINIO_ACCESS_KEY: ${SC_INFERENCE_WORKER_MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${SC_INFERENCE_WORKER_MINIO_PASSWORD}
     networks:
       - sc-ai-net
       - sc-backend-net
@@ -219,7 +230,7 @@ services:
       context: ./services/sc-frontend
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: ./services/sc-frontend/.env
+    env_file: .env
     ports:
       - "3000:3000"
     networks:
@@ -244,7 +255,7 @@ services:
   sc-grafana:
     image: grafana/grafana:11.5.2
     restart: unless-stopped
-    env_file: ./services/sc-grafana/.env
+    env_file: .env
     volumes:
       - sc-grafana-data:/var/lib/grafana
     ports:
@@ -272,9 +283,13 @@ services:
   sc-label-studio:
     image: heartexlabs/label-studio:1.14.0
     restart: unless-stopped
-    env_file: ./services/sc-label-studio/.env
+    env_file: .env
     environment:
-      AWS_ENDPOINT_URL: http://sc-object-storage:9000
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+      MINIO_ENDPOINT: ${LABEL_STUDIO_MINIO_ENDPOINT}
+      MINIO_PRESIGN_ENDPOINT: ${LABEL_STUDIO_MINIO_PRESIGN_ENDPOINT}
+      MINIO_ACCESS_KEY: ${SC_LABEL_STUDIO_MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${SC_LABEL_STUDIO_MINIO_PASSWORD}
     volumes:
       - sc-label-studio-data:/label-studio/data
     ports:
@@ -298,9 +313,7 @@ services:
   sc-label-studio-init:
     image: python:3.11-slim
     restart: "no"
-    env_file: ./services/sc-label-studio/.env
-    environment:
-      LABEL_STUDIO_URL: http://sc-label-studio:8081
+    env_file: .env
     entrypoint: ["sh", "-c", "pip install requests boto3 -q && python3 /init/setup-project.py"]
     volumes:
       - ./services/sc-label-studio/init:/init:ro
