@@ -229,6 +229,11 @@ services:
     build:
       context: ./services/sc-frontend
       dockerfile: Dockerfile
+      args:
+        # VITE_* s'incorporen al bundle en temps de build (no runtime).
+        # Cal passar-les explícitament com a args perquè siguin disponibles
+        # durant el `npm run build` dins del contenidor builder.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     restart: unless-stopped
     env_file: .env
     ports:
