@@ -322,6 +322,14 @@ services:
     image: python:3.11-slim
     restart: "no"
     env_file: .env
+    environment:
+      # El script setup-project.py usa noms genèrics que no coincideixen
+      # amb els noms del .env arrel → es fan els mapatges aquí.
+      MINIO_ENDPOINT: ${LABEL_STUDIO_MINIO_ENDPOINT}
+      MINIO_ACCESS_KEY: ${SC_LABEL_STUDIO_MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${SC_LABEL_STUDIO_MINIO_PASSWORD}
+      MINIO_BUCKET_FRAMES: ${MINIO_BUCKET_LABELING_FRAMES}
+      MINIO_PRESIGN_ENDPOINT: ${LABEL_STUDIO_MINIO_PRESIGN_ENDPOINT}
     entrypoint: ["sh", "-c", "pip install requests boto3 -q && python3 /init/setup-project.py"]
     volumes:
       - ./services/sc-label-studio/init:/init:ro
