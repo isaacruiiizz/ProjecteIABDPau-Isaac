@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
         libgl1 \
         libglib2.0-0 \
+        iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
