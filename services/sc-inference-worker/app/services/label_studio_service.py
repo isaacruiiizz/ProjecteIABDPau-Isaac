@@ -10,7 +10,7 @@ from app.utils.bbox_converter import yolo_to_label_studio
 
 logger = logging.getLogger(__name__)
 
-_MODEL_VERSION = "yolov8n-base-v0"
+_MODEL_VERSION = "rfdetr-small-base-v0"
 
 
 class LabelStudioService:

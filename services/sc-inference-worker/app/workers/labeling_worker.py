@@ -4,7 +4,7 @@ Worker de pre-anotació per al pipeline d'etiquetatge.
 Flux:
   1. BLPOP labeling_frames_to_infer
   2. Descarrega frame de MinIO (labeling-frames)
-  3. Inferència YOLOv8n → deteccions de persones
+  3. Inferència RF-DETR Small → deteccions de persones
   4. Classifica player_own / others per color de samarreta
   5. Cerca task_id a Label Studio (retry si sync no ha acabat)
   6. Publica predicció via Label Studio API
@@ -18,10 +18,11 @@ import time
 
 import redis
 from minio import Minio
+from minio.error import S3Error
 
 from app.config import settings
 from app.services.label_studio_service import LabelStudioService
-from app.services.yolo_service import YoloService
+from app.services.rfdetr_service import RFDETRService
 from app.utils import jersey_classifier
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,30 @@ def _build_minio_client() -> Minio:
     )
 
 
+def _load_model_path(minio_client: Minio) -> str | None:
+    """
+    Intenta descarregar els pesos RF-DETR des de MinIO.
+    Si el fitxer no existeix retorna None perquè RFDETRService
+    faci l'auto-descàrrega des de HuggingFace.
+    """
+    local_path = "/tmp/rf-detr-small.pth"
+    try:
+        logger.info('{"event":"rfdetr_model_download_start","bucket":"%s","key":"%s"}',
+                    settings.MINIO_BUCKET_MODELS, settings.MINIO_MODEL_KEY)
+        minio_client.fget_object(
+            settings.MINIO_BUCKET_MODELS,
+            settings.MINIO_MODEL_KEY,
+            local_path,
+        )
+        logger.info('{"event":"rfdetr_model_download_done","path":"%s"}', local_path)
+        return local_path
+    except S3Error as exc:
+        if exc.code == "NoSuchKey":
+            logger.info('{"event":"rfdetr_model_not_in_minio","fallback":"huggingface_autodownload"}')
+            return None
+        raise
+
+
 def run(stop_event: threading.Event) -> None:
     """
     Bucle principal del labeling worker. S'executa en un thread separat.
@@ -59,19 +84,9 @@ def run(stop_event: threading.Event) -> None:
     redis_client = _build_redis_client()
     minio_client = _build_minio_client()
 
-    # Descarrega el model de MinIO a /tmp per evitar dependència de xarxa externa
-    model_local_path = "/tmp/yolov8n.pt"
-    logger.info('{"event":"yolo_model_download_start","bucket":"%s","key":"%s"}',
-                settings.MINIO_BUCKET_MODELS, settings.MINIO_MODEL_KEY)
-    minio_client.fget_object(
-        settings.MINIO_BUCKET_MODELS,
-        settings.MINIO_MODEL_KEY,
-        model_local_path,
-    )
-    logger.info('{"event":"yolo_model_download_done","path":"%s"}', model_local_path)
-
-    yolo_service = YoloService(
-        model_path=model_local_path,
+    model_path = _load_model_path(minio_client)
+    rfdetr_service = RFDETRService(
+        model_path=model_path,
         confidence=settings.INFERENCE_LABELING_CONFIDENCE,
     )
     ls_service = LabelStudioService(
@@ -116,8 +131,8 @@ def run(stop_event: threading.Event) -> None:
             )
             continue
 
-        # 2. Inferència YOLOv8n
-        detections = yolo_service.predict(image_bytes)
+        # 2. Inferència RF-DETR Small
+        detections = rfdetr_service.predict(image_bytes)
         if not detections:
             logger.info(
                 '{"event":"labeling_no_detections","frame":"%s"}', frame_name
@@ -130,7 +145,7 @@ def run(stop_event: threading.Event) -> None:
         jersey_color = payload.get("jersey_own_color_hsv") or settings.JERSEY_OWN_COLOR_HSV
         jersey_threshold = int(payload.get("jersey_color_threshold") or settings.JERSEY_COLOR_THRESHOLD)
 
-        img_array = yolo_service.get_image_array(image_bytes)
+        img_array = rfdetr_service.get_image_array(image_bytes)
         detections = jersey_classifier.classify(
             image=img_array,
             detections=detections,
