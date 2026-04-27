@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Loader2,
   Play,
+  RefreshCw,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -50,8 +51,17 @@ export default function LabelingPage() {
   const [file, setFile] = useState<File | null>(null);
   const [frameInterval, setFrameInterval] = useState(2);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<LabelingUploadResponse | null>(null);
+  const [uploadResult, setUploadResult] = useState<LabelingUploadResponse | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('labeling_upload_result');
+      return saved ? (JSON.parse(saved) as LabelingUploadResponse) : null;
+    } catch { return null; }
+  });
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // ── Reprendre sessió existent ────────────────────────────────────────────────
+  const [resumeInput, setResumeInput] = useState('');
+  const [resumeError, setResumeError] = useState<string | null>(null);
 
   // ── Eyedropper / canvas ─────────────────────────────────────────────────────
   const [totalFrames, setTotalFrames] = useState(0);
@@ -136,6 +146,15 @@ export default function LabelingPage() {
   useEffect(() => () => { if (retryTimerRef.current) clearTimeout(retryTimerRef.current); }, []);
   useEffect(() => () => { if (lsPollingRef.current) clearInterval(lsPollingRef.current); }, []);
 
+  // Persisteix la sessió activa per recuperar-la si l'usuari recarrega o navega
+  useEffect(() => {
+    if (uploadResult) {
+      sessionStorage.setItem('labeling_upload_result', JSON.stringify(uploadResult));
+    } else {
+      sessionStorage.removeItem('labeling_upload_result');
+    }
+  }, [uploadResult]);
+
   useEffect(() => {
     if (!uploadResult) return;
     if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
@@ -170,6 +189,20 @@ export default function LabelingPage() {
   useEffect(() => {
     getLsStats().then(setLsStats).catch(() => null);
   }, []);
+
+  // ── Handler reprendre sessió ─────────────────────────────────────────────────
+  function handleResumeSession() {
+    const id = resumeInput.trim();
+    if (!id) { setResumeError('Introdueix un session ID vàlid.'); return; }
+    setResumeError(null);
+    setUploadResult({ session_id: id });
+    setResumeInput('');
+    setStartResult(null);
+    setSelectedHsv(null);
+    setSelectedRgb(null);
+    setTotalFrames(0);
+    setFrameIndex(0);
+  }
 
   // ── Handlers upload ─────────────────────────────────────────────────────────
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -433,6 +466,40 @@ export default function LabelingPage() {
           </form>
         </div>
 
+        {/* ── Reprendre sessió existent ───────────────────────────────────── */}
+        {!uploadResult && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <RefreshCw size={18} className="text-gray-500" />
+              <h2 className="text-base font-semibold text-gray-900">Reprendre sessió existent</h2>
+            </div>
+            <p className="text-sm text-gray-500">
+              Si ja has pujat un vídeo anteriorment, introdueix el <span className="font-mono text-gray-700">session_id</span> per continuar amb la selecció de color i la pre-anotació.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={resumeInput}
+                onChange={(e) => setResumeInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleResumeSession()}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={handleResumeSession}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <RefreshCw size={14} />Reprendre
+              </button>
+            </div>
+            {resumeError && (
+              <div className="flex items-center gap-2 text-red-600 text-sm">
+                <AlertCircle size={14} /><span>{resumeError}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Eyedropper ──────────────────────────────────────────────────── */}
         {uploadResult && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-4">
@@ -441,7 +508,16 @@ export default function LabelingPage() {
                 <div className="w-2 h-2 bg-indigo-600 rounded-full" />
               </div>
               <h2 className="text-base font-semibold text-gray-900">Color de samarreta</h2>
+              <button
+                onClick={() => { setUploadResult(null); setStartResult(null); }}
+                className="ml-auto text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Canviar sessió
+              </button>
             </div>
+            <p className="text-xs text-gray-400 font-mono break-all">
+              Sessió: {uploadResult.session_id}
+            </p>
             <p className="text-sm text-gray-500">
               Passa el cursor per sobre d'un jugador del teu equip. El color es mostra en temps real.
               <strong className="text-gray-700"> Clica</strong> per confirmar la selecció.
