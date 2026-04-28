@@ -29,7 +29,7 @@ _rfdetr_detr.download_pretrain_weights = _download_if_missing
 
 logger = logging.getLogger(__name__)
 
-_PERSON_CLASS_ID = 0
+_PERSON_CLASS_ID = 1  # RF-DETR usa indexació COCO 1-based (persona=1), a diferència de YOLO (persona=0)
 
 
 class RFDETRService:
