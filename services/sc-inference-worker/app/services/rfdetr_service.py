@@ -7,10 +7,25 @@ Confiança baixa (0.3) per pre-anotació: millor tenir de més que de menys.
 """
 import io
 import logging
+import os
 
 import numpy as np
+import rfdetr.detr as _rfdetr_detr
 from PIL import Image
 from rfdetr import RFDETRSmall
+from rfdetr.assets.model_weights import download_pretrain_weights as _orig_download_pretrain_weights
+
+
+def _download_if_missing(pretrain_weights: str, redownload: bool = False, validate_md5: bool = True) -> None:
+    """Salta la descàrrega si el fitxer ja existeix localment (evita dependència de xarxa)."""
+    if os.path.exists(pretrain_weights):
+        return
+    _orig_download_pretrain_weights(pretrain_weights, redownload=False, validate_md5=validate_md5)
+
+
+# rfdetr.detr crida download_pretrain_weights amb redownload=True ignorant el fitxer local.
+# Aquest patch fa que comprovi primer si existeix abans d'intentar descarregar.
+_rfdetr_detr.download_pretrain_weights = _download_if_missing
 
 logger = logging.getLogger(__name__)
 
