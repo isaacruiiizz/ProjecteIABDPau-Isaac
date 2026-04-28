@@ -206,6 +206,9 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${SC_INFERENCE_WORKER_MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${SC_INFERENCE_WORKER_MINIO_PASSWORD}
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     networks:
       - sc-ai-net
       - sc-backend-net
@@ -214,13 +217,6 @@ services:
         condition: service_healthy
       sc-object-storage:
         condition: service_healthy
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     logging: *default-logging
 
   # ── Grup 4: Frontend ──────────────────────────────────────────────────────
