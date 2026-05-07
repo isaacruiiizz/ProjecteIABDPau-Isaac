@@ -1,0 +1,51 @@
+import asyncio
+import logging
+from datetime import datetime, timezone
+
+from bson import ObjectId
+
+from app.repositories import match_repository
+
+logger = logging.getLogger(__name__)
+
+BUCKET_RAW = "raw-videos"
+
+
+async def upload_match(
+    file_bytes: bytes,
+    title: str,
+    user_id: str,
+    s3,
+    db,
+) -> dict:
+    match_id = str(ObjectId())
+    minio_key = f"{match_id}/original.mp4"
+
+    await asyncio.to_thread(
+        s3.put_object,
+        Bucket=BUCKET_RAW,
+        Key=minio_key,
+        Body=file_bytes,
+        ContentType="video/mp4",
+    )
+    logger.info("Vídeo pujat a MinIO: %s/%s", BUCKET_RAW, minio_key)
+
+    now = datetime.now(timezone.utc)
+    await match_repository.create_match(db, {
+        "_id":          ObjectId(match_id),
+        "user_id":      user_id,
+        "title":        title,
+        "date":         now,
+        "status":       "pending",
+        "video_raw":    minio_key,
+        "video_output": None,
+        "fps":          None,
+        "start_frame":  None,
+        "end_frame":    None,
+        "roi_polygon":  [],
+        "created_at":   now,
+        "updated_at":   now,
+    })
+    logger.info("Partit creat a MongoDB: %s", match_id)
+
+    return {"match_id": match_id, "status": "pending"}

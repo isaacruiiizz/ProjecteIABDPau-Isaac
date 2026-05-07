@@ -11,7 +11,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 import app.dependencies as deps
 from app.config import settings
-from app.routers import auth, health, labeling
+from app.routers import auth, health, labeling, matches
 
 
 def setup_logging(service_name: str, sentry_dsn: str = None) -> None:
@@ -75,3 +75,4 @@ if _cors_origins:
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(labeling.router)
+app.include_router(matches.router)
