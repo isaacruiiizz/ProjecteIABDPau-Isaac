@@ -49,3 +49,25 @@ async def upload_match(
     logger.info("Partit creat a MongoDB: %s", match_id)
 
     return {"match_id": match_id, "status": "pending"}
+
+
+async def update_config(
+    match_id: str,
+    roi_polygon: list,
+    start_seconds: float,
+    end_seconds: float,
+    db,
+) -> dict:
+    doc = await match_repository.update_match_config(db, match_id, {
+        "roi_polygon":   [{"x": p.x, "y": p.y} for p in roi_polygon],
+        "start_seconds": start_seconds,
+        "end_seconds":   end_seconds,
+    })
+    if doc is None:
+        raise ValueError("Partit no trobat")
+    return {
+        "match_id":      str(doc["_id"]),
+        "roi_polygon":   doc["roi_polygon"],
+        "start_seconds": doc["start_seconds"],
+        "end_seconds":   doc["end_seconds"],
+    }
