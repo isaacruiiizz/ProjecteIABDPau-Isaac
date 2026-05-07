@@ -34,7 +34,7 @@ import {
 import { rgbToHsv, rgbToCss } from '../utils/color';
 
 const REPRESENTATIVE_PCTS = [0.10, 0.25, 0.50, 0.75, 0.90];
-const MAX_RETRIES = 20;
+const MAX_RETRIES = 50;
 const LENS_SIZE = 88;      // px — diàmetre de la lupa
 const LENS_ZOOM = 4;       // factor de zoom
 const LENS_CROP = LENS_SIZE / LENS_ZOOM; // px de la imatge capturats (22×22)
