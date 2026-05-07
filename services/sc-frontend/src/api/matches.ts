@@ -17,11 +17,19 @@ interface MatchConfigResponse {
   end_seconds: number;
 }
 
-export async function createMatch(video: File, title: string): Promise<MatchCreateResponse> {
+export async function createMatch(
+  video: File,
+  title: string,
+  onProgress?: (pct: number) => void,
+): Promise<MatchCreateResponse> {
   const form = new FormData();
   form.append('video', video);
   form.append('title', title);
-  const { data } = await apiClient.post<MatchCreateResponse>('/api/v1/matches', form);
+  const { data } = await apiClient.post<MatchCreateResponse>('/api/v1/matches', form, {
+    onUploadProgress(e) {
+      if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    },
+  });
   return data;
 }
 
