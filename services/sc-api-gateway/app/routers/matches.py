@@ -4,12 +4,21 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.dependencies import get_app_db, get_current_user, get_s3
 from app.schemas.auth import TokenPayload
-from app.schemas.matches import MatchConfigRequest, MatchConfigResponse, MatchCreateResponse
+from app.schemas.matches import MatchConfigRequest, MatchConfigResponse, MatchCreateResponse, MatchListItem
 from app.services import match_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/matches", tags=["matches"])
+
+
+@router.get("", response_model=list[MatchListItem])
+async def list_matches(
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_app_db),
+):
+    results = await match_service.list_matches(current_user.sub, db)
+    return [MatchListItem(**r) for r in results]
 
 
 @router.post("", response_model=MatchCreateResponse, status_code=201)

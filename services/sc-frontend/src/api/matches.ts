@@ -17,6 +17,21 @@ interface MatchConfigResponse {
   end_seconds: number;
 }
 
+export interface MatchListItem {
+  match_id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  start_seconds: number | null;
+  end_seconds: number | null;
+  has_roi: boolean;
+}
+
+export async function getMatches(): Promise<MatchListItem[]> {
+  const { data } = await apiClient.get<MatchListItem[]>('/api/v1/matches');
+  return data;
+}
+
 export async function createMatch(
   video: File,
   title: string,

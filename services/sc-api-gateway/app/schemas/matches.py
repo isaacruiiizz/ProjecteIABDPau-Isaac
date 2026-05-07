@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, field_validator, model_validator
 
 
@@ -35,3 +36,13 @@ class MatchConfigResponse(BaseModel):
     roi_polygon: list[RoiPoint]
     start_seconds: float
     end_seconds: float
+
+
+class MatchListItem(BaseModel):
+    match_id: str
+    title: str
+    status: str
+    created_at: datetime
+    start_seconds: float | None = None
+    end_seconds: float | None = None
+    has_roi: bool

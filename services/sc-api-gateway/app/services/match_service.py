@@ -51,6 +51,22 @@ async def upload_match(
     return {"match_id": match_id, "status": "pending"}
 
 
+async def list_matches(user_id: str, db) -> list[dict]:
+    docs = await match_repository.list_matches_by_user(db, user_id)
+    return [
+        {
+            "match_id":      str(d["_id"]),
+            "title":         d["title"],
+            "status":        d["status"],
+            "created_at":    d["created_at"],
+            "start_seconds": d.get("start_seconds"),
+            "end_seconds":   d.get("end_seconds"),
+            "has_roi":       len(d.get("roi_polygon") or []) > 0,
+        }
+        for d in docs
+    ]
+
+
 async def update_config(
     match_id: str,
     roi_polygon: list,

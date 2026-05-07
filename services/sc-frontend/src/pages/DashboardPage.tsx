@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Clock, LogOut, Tag, Timer } from 'lucide-react';
+import { Clock, Film, LogOut, Tag, Timer } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 
 export default function DashboardPage() {
@@ -42,6 +42,25 @@ export default function DashboardPage() {
           </p>
           <span className="text-sm font-medium text-blue-600 group-hover:underline">
             Començar →
+          </span>
+        </button>
+
+        {/* Els meus partits */}
+        <button
+          onClick={() => navigate('/matches')}
+          className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6
+                     text-left hover:border-emerald-300 hover:shadow-md transition-all group"
+        >
+          <div className="bg-emerald-100 text-emerald-600 rounded-xl p-3 w-fit mb-4
+                          group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+            <Film size={24} />
+          </div>
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Els meus partits</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Consulta l'estat dels vídeos pujats i el progrés de cada processament.
+          </p>
+          <span className="text-sm font-medium text-emerald-600 group-hover:underline">
+            Veure partits →
           </span>
         </button>
 
