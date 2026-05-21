@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     MINIO_MODEL_KEY: str = "rfdetr/base/rf-detr-small.pth"  # clau del model base dins el bucket models
 
     # IA — producció
+    RTDETR_MODEL_KEY: str = "rtdetr/best.pt"
+    RTDETR_CONFIDENCE: float = 0.5
+    INFERENCE_DEVICE: str = "cpu"
+    INFERENCE_CLAHE: bool = True
+    INFERENCE_SHARPEN: bool = True
     YOLO_MODEL_PATH: str = "yolo/weights/v1.pt"
     CNN_MODEL_PATH: str = "cnn/weights/v1.keras"
     INFERENCE_CONFIDENCE_THRESHOLD: float = 0.6

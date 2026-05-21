@@ -53,9 +53,10 @@ def main() -> None:
     labeling_thread.start()
     logger.info('{"event":"labeling_worker_thread_started"}')
 
-    # Thread de inferència en producció (placeholder)
+    # Thread de inferència en producció
     inference_thread = threading.Thread(
         target=inference_worker.run,
+        args=(stop_event,),
         name="inference-worker",
         daemon=True,
     )
