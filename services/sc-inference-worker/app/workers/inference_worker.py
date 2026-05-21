@@ -8,6 +8,7 @@ from minio.error import S3Error
 
 from app.config import settings
 from app.services.rtdetr_service import RTDETRService
+from app.utils import jersey_classifier
 
 logger = logging.getLogger(__name__)
 
@@ -33,27 +34,48 @@ def _build_minio_client() -> Minio:
     )
 
 
-def _download_model(minio_client: Minio) -> None:
-    logger.info(
-        '{"event":"rtdetr_model_download_start","bucket":"%s","key":"%s"}',
-        settings.MINIO_BUCKET_MODELS, settings.RTDETR_MODEL_KEY,
-    )
-    minio_client.fget_object(
-        settings.MINIO_BUCKET_MODELS,
-        settings.RTDETR_MODEL_KEY,
-        _MODEL_LOCAL_PATH,
-    )
-    logger.info('{"event":"rtdetr_model_download_done","path":"%s"}', _MODEL_LOCAL_PATH)
+def _resolve_model(minio_client: Minio) -> str:
+    """
+    Si RTDETR_MODEL_KEY conté '/' és un path de MinIO → descarregar.
+    Si és un nom tipus 'rtdetr-l.pt' → Ultralytics auto-descàrrega.
+    """
+    key = settings.RTDETR_MODEL_KEY
+    if "/" in key:
+        logger.info('{"event":"rtdetr_model_download_start","key":"%s"}', key)
+        minio_client.fget_object(settings.MINIO_BUCKET_MODELS, key, _MODEL_LOCAL_PATH)
+        logger.info('{"event":"rtdetr_model_download_done"}')
+        return _MODEL_LOCAL_PATH
+    logger.info('{"event":"rtdetr_model_ultralytics_auto","model":"%s"}', key)
+    return key
 
 
-def _build_service() -> RTDETRService:
+def _build_service(model_path: str) -> RTDETRService:
     return RTDETRService(
-        model_path=_MODEL_LOCAL_PATH,
+        model_path=model_path,
         confidence=settings.RTDETR_CONFIDENCE,
         device=settings.INFERENCE_DEVICE,
         clahe=settings.INFERENCE_CLAHE,
         sharpen=settings.INFERENCE_SHARPEN,
     )
+
+
+def _apply_jersey_classifier(service: RTDETRService, image_bytes: bytes, detections: list[dict]) -> list[dict]:
+    """Classifica player_own / other per color de samarreta si HSV configurat."""
+    if not settings.JERSEY_OWN_COLOR_HSV or not detections:
+        for d in detections:
+            d["class_name"] = "player_own"
+        return detections
+
+    img_rgb = service.get_image_array(image_bytes)
+    classified = jersey_classifier.classify(
+        image=img_rgb,
+        detections=detections,
+        own_color_hsv_str=settings.JERSEY_OWN_COLOR_HSV,
+        threshold=settings.JERSEY_COLOR_THRESHOLD,
+    )
+    for d in classified:
+        d["class_name"] = "player_own" if d.pop("label") == "player_own" else "other"
+    return classified
 
 
 def _process_frame(
@@ -75,13 +97,11 @@ def _process_frame(
         response.close()
         response.release_conn()
     except S3Error as exc:
-        logger.error(
-            '{"event":"inference_minio_error","key":"%s","error":"%s"}',
-            minio_key, str(exc),
-        )
+        logger.error('{"event":"inference_minio_error","key":"%s","error":"%s"}', minio_key, str(exc))
         return
 
     detections = service.predict(image_bytes)
+    detections = _apply_jersey_classifier(service, image_bytes, detections)
 
     result = {
         "match_id": match_id,
@@ -92,9 +112,10 @@ def _process_frame(
     }
     redis_client.rpush(settings.REDIS_QUEUE_RESULTS, json.dumps(result))
 
+    own = sum(1 for d in detections if d["class_name"] == "player_own")
     logger.info(
-        '{"event":"inference_frame_done","match_id":"%s","frame_number":%d,"detections":%d}',
-        match_id, frame_number, len(detections),
+        '{"event":"inference_frame_done","match_id":"%s","frame_number":%d,"total":%d,"player_own":%d}',
+        match_id, frame_number, len(detections), own,
     )
 
 
@@ -104,8 +125,8 @@ def run(stop_event: threading.Event) -> None:
     redis_client = _build_redis_client()
     minio_client = _build_minio_client()
 
-    _download_model(minio_client)
-    service = _build_service()
+    model_path = _resolve_model(minio_client)
+    service = _build_service(model_path)
 
     queues = [settings.REDIS_QUEUE_FRAMES, settings.REDIS_QUEUE_MODEL_PROMOTED]
 
@@ -125,8 +146,8 @@ def run(stop_event: threading.Event) -> None:
         if queue == settings.REDIS_QUEUE_MODEL_PROMOTED.encode():
             logger.info('{"event":"inference_model_promoted_reload"}')
             try:
-                _download_model(minio_client)
-                service = _build_service()
+                model_path = _resolve_model(minio_client)
+                service = _build_service(model_path)
             except Exception as exc:
                 logger.error('{"event":"inference_model_reload_failed","error":"%s"}', str(exc))
             continue

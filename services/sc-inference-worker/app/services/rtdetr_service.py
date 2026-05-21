@@ -12,12 +12,15 @@ _SHARPEN_KERNEL = np.array([
     [ 0, -0.3,  0],
 ], dtype=np.float32)
 
+# En el model base COCO, 'person' és la classe 0
+_COCO_PERSON_CLASS = 0
+
 
 class RTDETRService:
     def __init__(
         self,
         model_path: str,
-        confidence: float = 0.5,
+        confidence: float = 0.35,
         device: str = "cpu",
         clahe: bool = True,
         sharpen: bool = True,
@@ -29,7 +32,11 @@ class RTDETRService:
 
         logger.info('{"event":"rtdetr_loading","model":"%s","device":"%s"}', model_path, device)
         self._model = RTDETR(model_path)
-        logger.info('{"event":"rtdetr_loaded"}')
+
+        # Model base COCO: filtrar només la classe 'person' (0)
+        # Model entrenat: totes les classes
+        self._is_base_model = "person" in self._model.names.values()
+        logger.info('{"event":"rtdetr_loaded","base_model":%s}', str(self._is_base_model).lower())
 
     def _preprocess(self, bgr: np.ndarray) -> np.ndarray:
         if self._clahe is not None:
@@ -37,10 +44,8 @@ class RTDETRService:
             l, a, b = cv2.split(lab)
             l = self._clahe.apply(l)
             bgr = cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
-
         if self._sharpen:
             bgr = cv2.filter2D(bgr, -1, _SHARPEN_KERNEL)
-
         return bgr
 
     def predict(self, image_bytes: bytes) -> list[dict]:
@@ -51,10 +56,15 @@ class RTDETRService:
 
         arr = self._preprocess(arr)
 
+        # Model base: filtra persona (classe 0 COCO); model entrenat: tot
+        classes_filter = [_COCO_PERSON_CLASS] if self._is_base_model else None
+
         results = self._model.predict(
             arr,
             conf=self._confidence,
-            imgsz=480,
+            imgsz=640 if self._is_base_model else 480,
+            iou=0.45,
+            classes=classes_filter,
             device=self._device,
             verbose=False,
         )
@@ -63,7 +73,6 @@ class RTDETRService:
         for r in results:
             if r.boxes is None:
                 continue
-            names = r.names
             for box in r.boxes:
                 xyxyn = box.xyxyn[0].tolist()
                 detections.append({
@@ -73,7 +82,7 @@ class RTDETRService:
                     "y2": xyxyn[3],
                     "confidence": float(box.conf[0]),
                     "class_id": int(box.cls[0]),
-                    "class_name": names[int(box.cls[0])],
+                    "class_name": "person" if self._is_base_model else r.names[int(box.cls[0])],
                 })
 
         logger.debug('{"event":"rtdetr_predict_done","detections":%d}', len(detections))

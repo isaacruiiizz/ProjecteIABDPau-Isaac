@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     MINIO_MODEL_KEY: str = "rfdetr/base/rf-detr-small.pth"  # clau del model base dins el bucket models
 
     # IA — producció
-    RTDETR_MODEL_KEY: str = "rtdetr/best.pt"
-    RTDETR_CONFIDENCE: float = 0.5
+    RTDETR_MODEL_KEY: str = "rtdetr-l.pt"   # nom Ultralytics → auto-descàrrega; path amb '/' → MinIO
+    RTDETR_CONFIDENCE: float = 0.35
     INFERENCE_DEVICE: str = "cpu"
     INFERENCE_CLAHE: bool = True
     INFERENCE_SHARPEN: bool = True
@@ -35,8 +35,8 @@ class Settings(BaseSettings):
 
     # IA — pre-anotació etiquetatge
     INFERENCE_LABELING_CONFIDENCE: float = 0.3
-    JERSEY_OWN_COLOR_HSV: str = ""   # ex: "120,80,150". Buit → fallback player_own
-    JERSEY_COLOR_THRESHOLD: int = 30
+    JERSEY_OWN_COLOR_HSV: str = "18,133,137"  # HSV groc mostrejat del vídeo
+    JERSEY_COLOR_THRESHOLD: int = 50
 
     # Label Studio
     LABEL_STUDIO_URL: str = "http://sc-label-studio:8081"
