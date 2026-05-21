@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     MINIO_MODEL_KEY: str = "rfdetr/base/rf-detr-small.pth"  # clau del model base dins el bucket models
 
     # IA — producció
-    RTDETR_MODEL_KEY: str = "rtdetr-l.pt"   # nom Ultralytics → auto-descàrrega; path amb '/' → MinIO
+    RTDETR_MODEL_KEY: str = "rtdetr/base/rtdetr-l.pt"   # path MinIO; sense '/' → Ultralytics auto-descàrrega
     RTDETR_CONFIDENCE: float = 0.35
     INFERENCE_DEVICE: str = "cpu"
     INFERENCE_CLAHE: bool = True
