@@ -17,6 +17,60 @@ _COLOR_OWN   = (0, 200,   0)   # green
 _COLOR_OTHER = (0,   0, 200)   # red
 _COLOR_DEF   = (200, 200,  0)  # cyan
 
+# Max normalised center-to-center distance to consider two detections the same player
+_MATCH_THRESHOLD_SQ = 0.09   # 0.3 in normalised coords
+
+
+def _interpolate_detections(dets_a: list, dets_b: list, alpha: float) -> list:
+    """
+    Match detections from two consecutive inference keyframes by proximity and
+    linearly interpolate their bounding boxes.  alpha=0 → dets_a, alpha=1 → dets_b.
+    Unmatched detections pass through unchanged.
+    """
+    if not dets_a:
+        return dets_b
+    if not dets_b:
+        return dets_a
+
+    used_b: set[int] = set()
+    result = []
+
+    for det_a in dets_a:
+        cx_a = (det_a["x1"] + det_a["x2"]) / 2
+        cy_a = (det_a["y1"] + det_a["y2"]) / 2
+
+        best_sq = _MATCH_THRESHOLD_SQ
+        best_j  = -1
+        for j, det_b in enumerate(dets_b):
+            if j in used_b:
+                continue
+            cx_b = (det_b["x1"] + det_b["x2"]) / 2
+            cy_b = (det_b["y1"] + det_b["y2"]) / 2
+            sq = (cx_b - cx_a) ** 2 + (cy_b - cy_a) ** 2
+            if sq < best_sq:
+                best_sq = sq
+                best_j  = j
+
+        if best_j >= 0:
+            b = dets_b[best_j]
+            used_b.add(best_j)
+            result.append({
+                "x1":         det_a["x1"] + (b["x1"] - det_a["x1"]) * alpha,
+                "y1":         det_a["y1"] + (b["y1"] - det_a["y1"]) * alpha,
+                "x2":         det_a["x2"] + (b["x2"] - det_a["x2"]) * alpha,
+                "y2":         det_a["y2"] + (b["y2"] - det_a["y2"]) * alpha,
+                "class_name": b.get("class_name") if alpha >= 0.5 else det_a.get("class_name", "player"),
+                "confidence": det_a["confidence"] + (b["confidence"] - det_a["confidence"]) * alpha,
+            })
+        else:
+            result.append(det_a)
+
+    for j, det_b in enumerate(dets_b):
+        if j not in used_b:
+            result.append(det_b)
+
+    return result
+
 
 def handle_frame_result(payload: dict, redis_client, minio_client, db, settings) -> None:
     match_id     = payload["match_id"]
@@ -62,7 +116,6 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
             data = json.loads(data_json)
             fn = int(fn_str)
             if isinstance(data, list):
-                # Legacy format: just a list of detections (no timestamp stored)
                 frame_map[fn] = {"timestamp_s": (fn - 1) / FRAMES_PER_SEC, "detections": data}
             else:
                 frame_map[fn] = data
@@ -122,33 +175,40 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
                 if not ret:
                     break
 
-                # Map video frame time → nearest inference result
-                t_relative    = frame_idx / fps_orig
-                inf_frame_num = int(t_relative * FRAMES_PER_SEC) + 1
-                result = frame_map.get(inf_frame_num) or frame_map.get(max(1, inf_frame_num - 1))
+                t_relative = frame_idx / fps_orig
 
-                if result:
-                    for det in result["detections"]:
-                        x1 = int(det["x1"] * vid_w)
-                        y1 = int(det["y1"] * vid_h)
-                        x2 = int(det["x2"] * vid_w)
-                        y2 = int(det["y2"] * vid_h)
-                        label = det.get("class_name", "player")
-                        conf  = det.get("confidence", 0.0)
+                # Current inference keyframe and interpolation alpha (0→1)
+                inf_fn = int(t_relative * FRAMES_PER_SEC) + 1
+                inf_t0 = (inf_fn - 1) / FRAMES_PER_SEC
+                alpha  = min(1.0, (t_relative - inf_t0) * FRAMES_PER_SEC)
 
-                        if "own" in label:
-                            color = _COLOR_OWN
-                            text  = f"Own {conf:.2f}"
-                        elif "other" in label:
-                            color = _COLOR_OTHER
-                            text  = f"Other {conf:.2f}"
-                        else:
-                            color = _COLOR_DEF
-                            text  = f"{label} {conf:.2f}"
+                res_a = frame_map.get(inf_fn)
+                res_b = frame_map.get(inf_fn + 1)
+                dets_a = res_a["detections"] if res_a else []
+                dets_b = res_b["detections"] if res_b else []
+                detections = _interpolate_detections(dets_a, dets_b, alpha)
 
-                        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-                        cv2.putText(img, text, (x1, max(y1 - 5, 10)),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+                for det in detections:
+                    x1 = int(det["x1"] * vid_w)
+                    y1 = int(det["y1"] * vid_h)
+                    x2 = int(det["x2"] * vid_w)
+                    y2 = int(det["y2"] * vid_h)
+                    label = det.get("class_name", "player")
+                    conf  = det.get("confidence", 0.0)
+
+                    if "own" in label:
+                        color = _COLOR_OWN
+                        text  = f"Own {conf:.2f}"
+                    elif "other" in label:
+                        color = _COLOR_OTHER
+                        text  = f"Other {conf:.2f}"
+                    else:
+                        color = _COLOR_DEF
+                        text  = f"{label} {conf:.2f}"
+
+                    cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(img, text, (x1, max(y1 - 5, 10)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
                 ffmpeg_proc.stdin.write(img.tobytes())
                 frame_idx += 1
