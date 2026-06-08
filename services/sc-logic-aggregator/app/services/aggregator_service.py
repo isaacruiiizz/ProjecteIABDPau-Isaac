@@ -77,9 +77,14 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
                 logger.warning('{"event":"frame_read_error","path":"%s"}', local_path)
                 continue
 
+            h, w = img.shape[:2]
             detections = json.loads(dets_json)
             for det in detections:
-                x1, y1, x2, y2 = int(det["x1"]), int(det["y1"]), int(det["x2"]), int(det["y2"])
+                # coords are normalised (0–1); convert to pixels
+                x1 = int(det["x1"] * w)
+                y1 = int(det["y1"] * h)
+                x2 = int(det["x2"] * w)
+                y2 = int(det["y2"] * h)
                 label = det.get("class_name", "player")
                 conf  = det.get("confidence", 0.0)
 
@@ -115,6 +120,7 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
             "ffmpeg",
             "-f", "concat", "-safe", "0", "-i", str(frame_list_path),
             "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-r", "25",
             "-preset", "fast", "-crf", "23",
             str(output_mp4), "-y",
         ]
