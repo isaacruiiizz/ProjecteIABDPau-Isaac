@@ -10,25 +10,12 @@ logger = logging.getLogger(__name__)
 FRAMES_PER_SEC = 2
 
 
-def _roi_bounding_box(roi_polygon: list[dict]) -> tuple[int, int, int, int]:
-    xs = [int(p["x"]) for p in roi_polygon]
-    ys = [int(p["y"]) for p in roi_polygon]
-    x = min(xs)
-    y = min(ys)
-    w = max(xs) - x
-    h = max(ys) - y
-    w = w if w % 2 == 0 else w - 1
-    h = h if h % 2 == 0 else h - 1
-    return x, y, w, h
-
-
 def process_match(payload: dict, minio_client, redis_client, settings) -> None:
-    match_id    = payload["match_id"]
-    minio_key   = payload["minio_key"]
-    roi_polygon = payload.get("roi_polygon") or []
-    start_s     = float(payload.get("start_seconds") or 0.0)
-    end_s       = float(payload["end_seconds"])
-    bucket_raw  = payload.get("minio_bucket", settings.MINIO_BUCKET_RAW)
+    match_id   = payload["match_id"]
+    minio_key  = payload["minio_key"]
+    start_s    = float(payload.get("start_seconds") or 0.0)
+    end_s      = float(payload["end_seconds"])
+    bucket_raw = payload.get("minio_bucket", settings.MINIO_BUCKET_RAW)
 
     tmp_dir    = Path(tempfile.mkdtemp(prefix=f"sc-match-{match_id[:8]}-"))
     video_path = tmp_dir / "video.mp4"
@@ -40,18 +27,11 @@ def process_match(payload: dict, minio_client, redis_client, settings) -> None:
         minio_client.fget_object(bucket_raw, minio_key, str(video_path))
         logger.info('{"event":"download_done","match_id":"%s"}', match_id)
 
-        vf_filter = f"fps={FRAMES_PER_SEC}"
-        if roi_polygon:
-            x, y, w, h = _roi_bounding_box(roi_polygon)
-            vf_filter += f",crop={w}:{h}:{x}:{y}"
-            logger.info('{"event":"roi_applied","match_id":"%s","x":%d,"y":%d,"w":%d,"h":%d}',
-                        match_id, x, y, w, h)
-
         frame_pattern = str(frames_dir / "frame_%06d.jpg")
         cmd = [
             "ffmpeg", "-ss", str(start_s), "-to", str(end_s),
             "-i", str(video_path),
-            "-vf", vf_filter, "-q:v", "2", frame_pattern, "-y",
+            "-vf", f"fps={FRAMES_PER_SEC}", "-q:v", "2", frame_pattern, "-y",
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
@@ -71,7 +51,6 @@ def process_match(payload: dict, minio_client, redis_client, settings) -> None:
 
         logger.info('{"event":"frames_uploaded","match_id":"%s","count":%d}', match_id, total_frames)
 
-        # Stored so sc-logic-aggregator knows when all detections are received
         redis_client.set(f"frames:{match_id}:total", str(total_frames))
 
         for frame_number, frame_file in enumerate(frame_files, start=1):

@@ -4,6 +4,11 @@
     {
       "Effect": "Allow",
       "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::raw-videos/*"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
       "Resource": ["arn:aws:s3:::pending-frames/*"]
     },
     {

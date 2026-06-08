@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str
     MINIO_SECRET_KEY: str
     MINIO_USE_SSL: bool = False
+    MINIO_BUCKET_RAW: str = "raw-videos"
     MINIO_BUCKET_PENDING: str = "pending-frames"
     MINIO_BUCKET_OUTPUT: str = "processed-videos"
 
