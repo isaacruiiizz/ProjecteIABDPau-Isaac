@@ -2,9 +2,9 @@ import logging
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
-from app.dependencies import get_app_db, get_current_user, get_s3
+from app.dependencies import get_app_db, get_current_user, get_redis, get_s3
 from app.schemas.auth import TokenPayload
-from app.schemas.matches import MatchConfigRequest, MatchConfigResponse, MatchCreateResponse, MatchListItem
+from app.schemas.matches import MatchConfigRequest, MatchConfigResponse, MatchCreateResponse, MatchListItem, ProcessMatchResponse
 from app.services import match_service
 
 logger = logging.getLogger(__name__)
@@ -46,6 +46,29 @@ async def create_match(
         raise HTTPException(status_code=500, detail="Error pujant el vídeo")
 
     return MatchCreateResponse(**result)
+
+
+@router.post("/{match_id}/process", response_model=ProcessMatchResponse, status_code=202)
+async def process_match(
+    match_id: str,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_app_db),
+    redis=Depends(get_redis),
+):
+    try:
+        result = await match_service.process_match(
+            match_id=match_id,
+            redis=redis,
+            db=db,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception:
+        logger.exception("Error iniciant el processament del partit")
+        raise HTTPException(status_code=500, detail="Error iniciant el processament")
+    return ProcessMatchResponse(**result)
 
 
 @router.patch("/{match_id}/config", response_model=MatchConfigResponse)

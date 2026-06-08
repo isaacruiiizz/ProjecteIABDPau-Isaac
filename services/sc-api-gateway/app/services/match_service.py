@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -9,6 +10,7 @@ from app.repositories import match_repository
 logger = logging.getLogger(__name__)
 
 BUCKET_RAW = "raw-videos"
+QUEUE_VIDEO = "video_to_process"
 
 
 async def upload_match(
@@ -65,6 +67,32 @@ async def list_matches(user_id: str, db) -> list[dict]:
         }
         for d in docs
     ]
+
+
+async def process_match(match_id: str, redis, db) -> dict:
+    doc = await match_repository.get_match_by_id(db, match_id)
+    if doc is None:
+        raise ValueError("Partit no trobat")
+    if doc["status"] in ("processing", "done"):
+        raise RuntimeError(f"El partit ja està en estat '{doc['status']}'")
+    if not doc.get("video_raw"):
+        raise RuntimeError("El partit no té cap vídeo pujat")
+
+    await match_repository.update_match_status(db, match_id, "processing")
+
+    payload = json.dumps({
+        "job_type":      "process_match",
+        "match_id":      match_id,
+        "minio_bucket":  BUCKET_RAW,
+        "minio_key":     doc["video_raw"],
+        "roi_polygon":   doc.get("roi_polygon") or [],
+        "start_seconds": doc.get("start_seconds") or 0.0,
+        "end_seconds":   doc.get("end_seconds"),
+    })
+    await redis.rpush(QUEUE_VIDEO, payload)
+    logger.info("process_match: missatge publicat match_id=%s", match_id)
+
+    return {"match_id": match_id, "status": "processing"}
 
 
 async def update_config(

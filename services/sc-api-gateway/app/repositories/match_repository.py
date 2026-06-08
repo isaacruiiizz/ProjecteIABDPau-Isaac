@@ -24,3 +24,17 @@ async def update_match_config(db: AsyncIOMotorDatabase, match_id: str, config: d
         {"$set": {**config, "updated_at": datetime.now(timezone.utc)}},
         return_document=True,
     )
+
+
+async def get_match_by_id(db: AsyncIOMotorDatabase, match_id: str) -> dict | None:
+    try:
+        return await db["matches"].find_one({"_id": ObjectId(match_id)})
+    except Exception:
+        return None
+
+
+async def update_match_status(db: AsyncIOMotorDatabase, match_id: str, status: str) -> None:
+    await db["matches"].update_one(
+        {"_id": ObjectId(match_id)},
+        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc)}},
+    )

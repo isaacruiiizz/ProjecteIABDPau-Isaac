@@ -46,3 +46,8 @@ class MatchListItem(BaseModel):
     start_seconds: float | None = None
     end_seconds: float | None = None
     has_roi: bool
+
+
+class ProcessMatchResponse(BaseModel):
+    match_id: str
+    status: str
