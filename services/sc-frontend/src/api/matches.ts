@@ -60,3 +60,10 @@ export async function updateMatchConfig(
   );
   return data;
 }
+
+export async function processMatch(matchId: string): Promise<{ match_id: string; status: string }> {
+  const { data } = await apiClient.post<{ match_id: string; status: string }>(
+    `/api/v1/matches/${matchId}/process`,
+  );
+  return data;
+}

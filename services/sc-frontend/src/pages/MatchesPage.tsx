@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, CheckCircle, Clock, Loader, Plus, Timer, XCircle,
+  AlertCircle, CheckCircle, Clock, Loader, Play, Plus, Timer, XCircle,
 } from 'lucide-react';
-import { getMatches, type MatchListItem } from '../api/matches';
+import { getMatches, processMatch, type MatchListItem } from '../api/matches';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending:      { label: 'Pendent',        color: 'bg-gray-100 text-gray-600',     icon: <Clock size={12} /> },
@@ -43,11 +43,19 @@ function formatDuration(start: number | null, end: number | null): string {
   return `${m}:${s}`;
 }
 
+function canProcess(m: MatchListItem): boolean {
+  return (m.status === 'pending' || m.status === 'error') &&
+    m.has_roi &&
+    m.start_seconds !== null;
+}
+
 export default function MatchesPage() {
   const navigate = useNavigate();
-  const [matches, setMatches] = useState<MatchListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [matches,       setMatches]       = useState<MatchListItem[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [processError,  setProcessError]  = useState<string | null>(null);
 
   useEffect(() => {
     getMatches()
@@ -55,6 +63,25 @@ export default function MatchesPage() {
       .catch(() => setError("No s'han pogut carregar els partits."))
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleProcess(matchId: string) {
+    setProcessingIds(prev => new Set(prev).add(matchId));
+    setProcessError(null);
+    try {
+      await processMatch(matchId);
+      setMatches(prev =>
+        prev.map(m => m.match_id === matchId ? { ...m, status: 'processing' } : m),
+      );
+    } catch {
+      setProcessError("No s'ha pogut iniciar el processament. Torna-ho a intentar.");
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(matchId);
+        return next;
+      });
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
@@ -95,12 +122,21 @@ export default function MatchesPage() {
           </div>
         )}
 
-        {/* Error */}
+        {/* Error càrrega */}
         {error && (
           <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50
                           border border-red-200 rounded-xl px-4 py-3">
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* Error processament */}
+        {processError && (
+          <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50
+                          border border-red-200 rounded-xl px-4 py-3 mb-3">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span>{processError}</span>
           </div>
         )}
 
@@ -151,6 +187,23 @@ export default function MatchesPage() {
                     }
                   </span>
                 </div>
+
+                {canProcess(m) && (
+                  <button
+                    onClick={() => handleProcess(m.match_id)}
+                    disabled={processingIds.has(m.match_id)}
+                    className="shrink-0 flex items-center gap-1.5 bg-blue-600
+                               hover:bg-blue-700 disabled:opacity-50
+                               disabled:cursor-not-allowed text-white text-xs
+                               font-medium px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    {processingIds.has(m.match_id)
+                      ? <Loader size={12} className="animate-spin" />
+                      : <Play size={12} />
+                    }
+                    Processar
+                  </button>
+                )}
               </div>
             ))}
           </div>
