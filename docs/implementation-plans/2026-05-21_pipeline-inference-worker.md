@@ -1,6 +1,6 @@
 # PJM-65 — Detecció de jugadors per frame amb RT-DETR
 
-**Estat:** En Procés  
+**Estat:** Completat ✓ (2026-05-21)  
 **Ticket:** PJM-65  
 **Data:** 2026-05-21  
 

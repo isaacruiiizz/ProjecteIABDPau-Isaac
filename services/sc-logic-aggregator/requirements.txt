@@ -1,1 +1,6 @@
-# Dependències s'afegiran amb el ticket d'implementació de sc-logic-aggregator
+redis==5.2.1
+minio==7.2.15
+pymongo==4.7.3
+opencv-python-headless==4.9.0.80
+sentry-sdk==2.24.1
+pydantic-settings==2.8.1

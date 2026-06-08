@@ -9,6 +9,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 from app.config import settings
 from app.services.labeling_service import process_labeling
+from app.services.match_service import process_match
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +89,10 @@ def main() -> None:
                 pass
 
         elif job_type == "process_match":
-            # Implementació pendent (ticket independent)
-            logger.warning('{"event":"job_type_not_implemented","job_type":"process_match"}')
+            try:
+                process_match(payload, minio_client, redis_client, settings)
+            except Exception:
+                pass  # error already logged inside process_match
 
         else:
             logger.warning('{"event":"unknown_job_type","job_type":"%s"}', job_type)

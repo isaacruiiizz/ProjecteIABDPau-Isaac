@@ -170,12 +170,17 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
+    environment:
+      MINIO_ACCESS_KEY: ${SC_LOGIC_AGGREGATOR_MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${SC_LOGIC_AGGREGATOR_MINIO_PASSWORD}
     networks:
       - sc-backend-net
     depends_on:
       sc-redis:
         condition: service_healthy
       sc-object-storage:
+        condition: service_healthy
+      sc-mongodb:
         condition: service_healthy
     logging: *default-logging
 
