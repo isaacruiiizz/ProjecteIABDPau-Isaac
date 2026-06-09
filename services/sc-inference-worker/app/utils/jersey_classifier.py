@@ -133,7 +133,10 @@ def classify(
         dom_hue = _dominant_hue(crop, bg_hue)
 
         if dom_hue is None:
-            det["label"] = "player_other"
+            # Crop buit després de treure el terra → la samarreta ÉS el color del terra
+            # (propi equip). Si el terra NO és del color propi, és un jugador inclassificable.
+            bg_similar_to_own = bg_hue is not None and _hue_distance(bg_hue, own_hue) <= 20
+            det["label"] = "player_own" if bg_similar_to_own else "player_other"
             continue
 
         det["label"] = (
