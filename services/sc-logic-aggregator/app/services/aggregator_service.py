@@ -103,6 +103,13 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
         vid_w    = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         vid_h    = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+        # Visual constants scaled to video resolution
+        line_thick  = max(2, vid_w // 960)
+        font        = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale  = max(0.5, vid_w / 2000)
+        text_thick  = max(1, vid_w // 1920)
+        pad         = max(2, vid_w // 1920)
+
         # Pipe raw BGR frames directly into FFmpeg → H.264 (no intermediate frame files)
         encode_cmd = [
             "ffmpeg",
@@ -133,7 +140,7 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
                         y1 = int(det["y1"] * vid_h)
                         x2 = int(det["x2"] * vid_w)
                         y2 = int(det["y2"] * vid_h)
-                        label = det.get("class_name", "player")
+                        label = det.get("class_name", "person")
                         conf  = det.get("confidence", 0.0)
 
                         if "own" in label:
@@ -144,11 +151,18 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
                             text  = f"Other {conf:.2f}"
                         else:
                             color = _COLOR_DEF
-                            text  = f"{label} {conf:.2f}"
+                            text  = f"? {conf:.2f}"
 
-                        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-                        cv2.putText(img, text, (x1, max(y1 - 5, 10)),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+                        # Bounding box
+                        cv2.rectangle(img, (x1, y1), (x2, y2), color, line_thick)
+
+                        # Label: filled background + white text
+                        (tw, th), baseline = cv2.getTextSize(text, font, font_scale, text_thick)
+                        lbl_y1 = max(0, y1 - th - 2 * pad)
+                        lbl_y2 = y1
+                        cv2.rectangle(img, (x1, lbl_y1), (x1 + tw + 2 * pad, lbl_y2), color, -1)
+                        cv2.putText(img, text, (x1 + pad, lbl_y2 - pad),
+                                    font, font_scale, (255, 255, 255), text_thick, cv2.LINE_AA)
 
                 ffmpeg_proc.stdin.write(img.tobytes())
                 frame_idx += 1

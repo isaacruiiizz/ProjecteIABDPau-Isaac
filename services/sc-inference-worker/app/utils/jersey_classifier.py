@@ -1,9 +1,13 @@
 """
-Classifica cada detecció com 'player_own' o 'others' analitzant el color
-dominant de la franja superior del bounding box (samarreta).
+Classifica cada detecció com 'player_own' o 'player_other' analitzant el hue
+dominant de la zona del torç del bounding box (samarreta).
 
-Si JERSEY_OWN_COLOR_HSV no està configurat, totes les deteccions reben
-'player_own' com a fallback.
+Algoritme:
+  1. Crop 15–60% vertical del bbox (torç, evitant cap i pantalons)
+  2. Convertir a HSV
+  3. Filtrar píxels amb S < MIN_SAT o V < MIN_VAL (ignora fons/pell/blanc/negre)
+  4. Histograma del canal H → pic = color dominant de la samarreta
+  5. Distància circular H-only vs. own_hue <= threshold → player_own
 """
 import logging
 
@@ -12,67 +16,72 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Fracció superior del BB que s'analitza (evita shorts/cames/gespa)
-_JERSEY_CROP_RATIO = 0.40
+_TORSO_TOP    = 0.15   # saltem la cap (15% superior del bbox)
+_TORSO_BOTTOM = 0.60   # tallem abans dels pantalons (60%)
+_MIN_SAT      = 60     # ignora grisos/blancs/negres apagats
+_MIN_VAL      = 40     # ignora zones molt fosques
 
 
-def _parse_hsv_config(hsv_str: str) -> tuple[int, int, int] | None:
-    """Parseja '120,80,150' → (120, 80, 150). Retorna None si buit o invàlid."""
+def _parse_own_hue(hsv_str: str) -> int | None:
+    """
+    Accepta 'H' o 'H,S,V' -> retorna el hue (0-180).
+    Retorna None si buit o invalid.
+    """
     if not hsv_str or not hsv_str.strip():
         return None
     try:
-        parts = [int(v.strip()) for v in hsv_str.split(",")]
-        if len(parts) != 3:
-            return None
-        return tuple(parts)  # type: ignore[return-value]
+        return int(hsv_str.strip().split(",")[0])
     except ValueError:
         logger.warning('{"event":"jersey_classifier_bad_config","value":"%s"}', hsv_str)
         return None
 
 
-def _dominant_hsv(crop: np.ndarray) -> tuple[float, float, float]:
-    """Retorna el color dominant d'un crop en espai HSV (mitjana ponderada)."""
-    hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
-    # Màscara per ignorar píxels molt foscos (ombres/gespa)
-    mask = hsv[:, :, 2] > 30
-    if mask.sum() == 0:
-        return (0.0, 0.0, 0.0)
-    h = float(np.median(hsv[:, :, 0][mask]))
-    s = float(np.median(hsv[:, :, 1][mask]))
-    v = float(np.median(hsv[:, :, 2][mask]))
-    return (h, s, v)
+def _dominant_hue(crop_bgr: np.ndarray) -> int | None:
+    """
+    Retorna el hue dominant (0-180 OpenCV) del crop.
+    Filtra pixels poc saturats i molt foscos.
+    Retorna None si no hi ha prou pixels informatius.
+    """
+    if crop_bgr.size == 0:
+        return None
+
+    hsv  = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
+    mask = (hsv[:, :, 1] >= _MIN_SAT) & (hsv[:, :, 2] >= _MIN_VAL)
+
+    if mask.sum() < 10:
+        return None
+
+    hist = cv2.calcHist([hsv[:, :, 0]], [0], mask.astype(np.uint8), [180], [0, 180])
+    return int(np.argmax(hist))
 
 
-def _hsv_distance(a: tuple, b: tuple) -> float:
-    """Distància euclidiana en espai HSV (pes doble a la component H)."""
-    dh = min(abs(a[0] - b[0]), 180 - abs(a[0] - b[0]))  # H és circular [0..180]
-    ds = abs(a[1] - b[1])
-    dv = abs(a[2] - b[2])
-    return float(np.sqrt((dh * 2) ** 2 + ds ** 2 + dv ** 2))
+def _hue_distance(h_a: int, h_b: int) -> int:
+    """Distancia circular entre dos hues (domini 0-180)."""
+    d = abs(h_a - h_b)
+    return min(d, 180 - d)
 
 
 def classify(
     image: np.ndarray,
     detections: list[dict],
     own_color_hsv_str: str,
-    threshold: int = 30,
+    threshold: int = 25,
 ) -> list[dict]:
     """
-    Assigna 'player_own' o 'others' a cada detecció basant-se en el color
-    de la samarreta (franja superior del BB).
+    Assigna 'player_own' o 'player_other' a cada deteccio.
 
     Args:
-        image:            imatge RGB en format numpy (H, W, 3)
-        detections:       llista de dicts amb x1, y1, x2, y2 normalitzats [0..1]
-        own_color_hsv_str: string "H,S,V" del color propi. Buit → tot 'player_own'
-        threshold:        distància màxima HSV per considerar 'player_own'
+        image:             imatge BGR (H, W, 3)
+        detections:        dicts amb x1, y1, x2, y2 normalitzats [0..1]
+        own_color_hsv_str: 'H' o 'H,S,V' del color propi. Buit -> tot 'player_own'
+        threshold:         diferencia maxima de hue per considerar 'player_own'
 
     Returns:
-        Mateixa llista amb camp 'label' afegit ('player_own' | 'others')
+        Mateixa llista amb camp 'label' afegit ('player_own' | 'player_other')
     """
-    own_color = _parse_hsv_config(own_color_hsv_str)
+    own_hue = _parse_own_hue(own_color_hsv_str)
 
-    if own_color is None:
+    if own_hue is None:
         for det in detections:
             det["label"] = "player_own"
         return detections
@@ -85,16 +94,20 @@ def classify(
         x2 = int(det["x2"] * w_img)
         y2 = int(det["y2"] * h_img)
 
-        # Retalla el 40% superior del BB (zona de la samarreta)
-        jersey_y2 = y1 + max(1, int((y2 - y1) * _JERSEY_CROP_RATIO))
-        crop = image[y1:jersey_y2, x1:x2]
+        box_h    = max(1, y2 - y1)
+        torso_y1 = y1 + int(box_h * _TORSO_TOP)
+        torso_y2 = y1 + int(box_h * _TORSO_BOTTOM)
+        crop     = image[torso_y1:torso_y2, x1:x2]
 
-        if crop.size == 0:
-            det["label"] = "player_own"
+        dom_hue = _dominant_hue(crop)
+
+        if dom_hue is None:
+            det["label"] = "player_other"
             continue
 
-        dominant = _dominant_hsv(crop)
-        distance = _hsv_distance(dominant, own_color)
-        det["label"] = "player_own" if distance <= threshold else "others"
+        det["label"] = (
+            "player_own" if _hue_distance(dom_hue, own_hue) <= threshold
+            else "player_other"
+        )
 
     return detections

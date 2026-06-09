@@ -2,6 +2,8 @@ import json
 import logging
 import threading
 
+import cv2
+import numpy as np
 import redis
 from minio import Minio
 from minio.error import S3Error
@@ -59,22 +61,28 @@ def _build_service(model_path: str) -> RTDETRService:
     )
 
 
-def _apply_jersey_classifier(service: RTDETRService, image_bytes: bytes, detections: list[dict]) -> list[dict]:
-    """Classifica player_own / other per color de samarreta si HSV configurat."""
-    if not settings.JERSEY_OWN_COLOR_HSV or not detections:
-        for d in detections:
-            d["class_name"] = "player_own"
+def _apply_jersey_classifier(image_bytes: bytes, detections: list[dict]) -> list[dict]:
+    """Classifica player_own / player_other per color de samarreta (HSV dominant)."""
+    if not detections:
         return detections
 
-    img_rgb = service.get_image_array(image_bytes)
+    if not settings.JERSEY_OWN_COLOR_HSV or not settings.JERSEY_OWN_COLOR_HSV.strip():
+        for d in detections:
+            d["class_name"] = "person"
+        return detections
+
+    arr = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if arr is None:
+        return detections
+
     classified = jersey_classifier.classify(
-        image=img_rgb,
+        image=arr,
         detections=detections,
         own_color_hsv_str=settings.JERSEY_OWN_COLOR_HSV,
         threshold=settings.JERSEY_COLOR_THRESHOLD,
     )
     for d in classified:
-        d["class_name"] = "player_own" if d.pop("label") == "player_own" else "other"
+        d["class_name"] = d.pop("label")
     return classified
 
 
@@ -101,7 +109,7 @@ def _process_frame(
         return
 
     detections = service.predict(image_bytes)
-    detections = _apply_jersey_classifier(service, image_bytes, detections)
+    detections = _apply_jersey_classifier(image_bytes, detections)
 
     result = {
         "match_id": match_id,
