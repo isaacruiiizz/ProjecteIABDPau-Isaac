@@ -17,6 +17,62 @@ _COLOR_OWN   = (0, 200,   0)   # green
 _COLOR_OTHER = (0,   0, 200)   # red
 _COLOR_DEF   = (200, 200,  0)  # cyan
 
+# Distància màxima en coords normalitzades per considerar el mateix jugador entre frames
+_MATCH_DIST = 0.06
+
+
+def _find_closest_det(cx: float, cy: float, dets: list[dict]) -> dict | None:
+    best, best_d = None, _MATCH_DIST ** 2
+    for d in dets:
+        dx = (d["x1"] + d["x2"]) / 2 - cx
+        dy = (d["y1"] + d["y2"]) / 2 - cy
+        dist = dx * dx + dy * dy
+        if dist < best_d:
+            best_d, best = dist, d
+    return best
+
+
+def _smooth_frame_map(frame_map: dict[int, dict]) -> dict[int, dict]:
+    """
+    Suavització temporal: per a cada detecció, vota amb els frames ±1.
+    Majoria de 3 vots determina l'etiqueta final (current, prev, next).
+    Estabilitza les caixes que salten entre OWN/OTHER cada frame.
+    """
+    keys = sorted(frame_map.keys())
+    smoothed: dict[int, dict] = {}
+
+    for i, fn in enumerate(keys):
+        prev_dets = frame_map[keys[i - 1]]["detections"] if i > 0 else []
+        next_dets = frame_map[keys[i + 1]]["detections"] if i < len(keys) - 1 else []
+        new_dets  = []
+
+        for det in frame_map[fn]["detections"]:
+            cx = (det["x1"] + det["x2"]) / 2
+            cy = (det["y1"] + det["y2"]) / 2
+            cur_label = det.get("class_name", "person")
+
+            votes = [cur_label]
+            for adj in (prev_dets, next_dets):
+                match = _find_closest_det(cx, cy, adj)
+                if match:
+                    votes.append(match.get("class_name", "person"))
+
+            own_v   = sum(1 for v in votes if "own"   in v)
+            other_v = sum(1 for v in votes if "other" in v)
+
+            new_det = dict(det)
+            if own_v > other_v:
+                new_det["class_name"] = "player_own"
+            elif other_v > own_v:
+                new_det["class_name"] = "player_other"
+            # empat → manté l'etiqueta actual
+
+            new_dets.append(new_det)
+
+        smoothed[fn] = {**frame_map[fn], "detections": new_dets}
+
+    return smoothed
+
 
 def handle_frame_result(payload: dict, redis_client, minio_client, db, settings) -> None:
     match_id     = payload["match_id"]
@@ -66,6 +122,9 @@ def _render_and_finalize(match_id: str, redis_client, minio_client, db, settings
                 frame_map[fn] = {"timestamp_s": (fn - 1) / FRAMES_PER_SEC, "detections": data}
             else:
                 frame_map[fn] = data
+
+        # Temporal smoothing: reduces per-frame label flickering
+        frame_map = _smooth_frame_map(frame_map)
 
         # Get match metadata
         match_doc = db["matches"].find_one(

@@ -16,9 +16,9 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_TORSO_TOP    = 0.20   # saltem cap i coll (20% superior del bbox)
-_TORSO_BOTTOM = 0.50   # tallem a meitat del cos (evita terra i cames)
-_MIN_SAT      = 90     # filtre alt: el terra/parquet té S<90, les samarretes solen tenir S>90
+_TORSO_TOP    = 0.25   # saltem cap i coll (25% superior del bbox)
+_TORSO_BOTTOM = 0.48   # tallem just al centre del cos (evita terra i cames)
+_MIN_SAT      = 110    # filtre estricte: parquet S≈80-95, samarretes vívides S>110
 _MIN_VAL      = 50     # ignora zones molt fosques
 
 
