@@ -1,6 +1,6 @@
 # PJM-77 — Classificació equip per color samarreta + millora visual bboxes
 
-**Estat:** En Procés
+**Estat:** Completat ✓ (2026-06-09)
 **Data:** 2026-06-09
 **Ticket:** PJM-77
 
