@@ -16,10 +16,10 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_TORSO_TOP    = 0.15   # saltem la cap (15% superior del bbox)
-_TORSO_BOTTOM = 0.60   # tallem abans dels pantalons (60%)
-_MIN_SAT      = 60     # ignora grisos/blancs/negres apagats
-_MIN_VAL      = 40     # ignora zones molt fosques
+_TORSO_TOP    = 0.20   # saltem cap i coll (20% superior del bbox)
+_TORSO_BOTTOM = 0.50   # tallem a meitat del cos (evita terra i cames)
+_MIN_SAT      = 90     # filtre alt: el terra/parquet té S<90, les samarretes solen tenir S>90
+_MIN_VAL      = 50     # ignora zones molt fosques
 
 
 def _parse_own_hue(hsv_str: str) -> int | None:
