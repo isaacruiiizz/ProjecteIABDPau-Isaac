@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, CheckCircle, Clock, Loader, Play, Plus, Timer, XCircle,
+  AlertCircle, CheckCircle, Clock, ExternalLink, Loader, Play, Plus, Timer, XCircle,
 } from 'lucide-react';
 import { getMatches, processMatch, type MatchListItem } from '../api/matches';
 
@@ -187,6 +187,18 @@ export default function MatchesPage() {
                     }
                   </span>
                 </div>
+
+                {m.status === 'done' && (
+                  <button
+                    onClick={() => navigate(`/matches/${m.match_id}/results`)}
+                    className="shrink-0 flex items-center gap-1.5 bg-blue-600
+                               hover:bg-blue-700 text-white text-xs font-medium
+                               px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <ExternalLink size={12} />
+                    Veure resultats
+                  </button>
+                )}
 
                 {canProcess(m) && (
                   <button

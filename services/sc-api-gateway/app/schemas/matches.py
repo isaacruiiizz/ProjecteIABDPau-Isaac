@@ -51,3 +51,13 @@ class MatchListItem(BaseModel):
 class ProcessMatchResponse(BaseModel):
     match_id: str
     status: str
+
+
+class MatchDetail(BaseModel):
+    match_id: str
+    title: str
+    status: str
+    created_at: datetime
+    start_seconds: float | None = None
+    end_seconds: float | None = None
+    download_url: str | None = None

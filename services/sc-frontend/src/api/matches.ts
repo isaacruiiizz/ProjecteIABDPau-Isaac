@@ -67,3 +67,18 @@ export async function processMatch(matchId: string): Promise<{ match_id: string;
   );
   return data;
 }
+
+export interface MatchDetail {
+  match_id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  start_seconds: number | null;
+  end_seconds: number | null;
+  download_url: string | null;
+}
+
+export async function getMatch(matchId: string): Promise<MatchDetail> {
+  const { data } = await apiClient.get<MatchDetail>(`/api/v1/matches/${matchId}`);
+  return data;
+}

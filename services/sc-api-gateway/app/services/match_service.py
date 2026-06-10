@@ -3,14 +3,17 @@ import json
 import logging
 from datetime import datetime, timezone
 
+import boto3
 from bson import ObjectId
 
+from app.config import settings
 from app.repositories import match_repository
 
 logger = logging.getLogger(__name__)
 
-BUCKET_RAW = "raw-videos"
-QUEUE_VIDEO = "video_to_process"
+BUCKET_RAW    = "raw-videos"
+BUCKET_OUTPUT = "processed-videos"
+QUEUE_VIDEO   = "video_to_process"
 
 
 async def upload_match(
@@ -93,6 +96,39 @@ async def process_match(match_id: str, redis, db) -> dict:
     logger.info("process_match: missatge publicat match_id=%s", match_id)
 
     return {"match_id": match_id, "status": "processing"}
+
+
+async def get_match_detail(match_id: str, user_id: str, db) -> dict:
+    doc = await match_repository.get_match_by_id(db, match_id)
+    if doc is None or str(doc.get("user_id")) != user_id:
+        raise ValueError("Partit no trobat")
+
+    download_url = None
+    if doc["status"] == "done" and doc.get("output_video"):
+        public_base = (settings.MINIO_PUBLIC_URL or
+                       f"http{'s' if settings.MINIO_USE_SSL else ''}://{settings.MINIO_ENDPOINT}")
+        presign_client = boto3.client(
+            "s3",
+            endpoint_url=public_base,
+            aws_access_key_id=settings.MINIO_ACCESS_KEY,
+            aws_secret_access_key=settings.MINIO_SECRET_KEY,
+        )
+        download_url = await asyncio.to_thread(
+            presign_client.generate_presigned_url,
+            "get_object",
+            Params={"Bucket": BUCKET_OUTPUT, "Key": doc["output_video"]},
+            ExpiresIn=300,
+        )
+
+    return {
+        "match_id":      str(doc["_id"]),
+        "title":         doc["title"],
+        "status":        doc["status"],
+        "created_at":    doc["created_at"],
+        "start_seconds": doc.get("start_seconds"),
+        "end_seconds":   doc.get("end_seconds"),
+        "download_url":  download_url,
+    }
 
 
 async def update_config(

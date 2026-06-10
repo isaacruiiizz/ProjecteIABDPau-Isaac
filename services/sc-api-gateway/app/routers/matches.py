@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.dependencies import get_app_db, get_current_user, get_redis, get_s3
 from app.schemas.auth import TokenPayload
-from app.schemas.matches import MatchConfigRequest, MatchConfigResponse, MatchCreateResponse, MatchListItem, ProcessMatchResponse
+from app.schemas.matches import MatchConfigRequest, MatchConfigResponse, MatchCreateResponse, MatchDetail, MatchListItem, ProcessMatchResponse
 from app.services import match_service
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,22 @@ async def list_matches(
 ):
     results = await match_service.list_matches(current_user.sub, db)
     return [MatchListItem(**r) for r in results]
+
+
+@router.get("/{match_id}", response_model=MatchDetail)
+async def get_match(
+    match_id: str,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_app_db),
+):
+    try:
+        result = await match_service.get_match_detail(match_id, current_user.sub, db)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception:
+        logger.exception("Error obtenint detall del partit")
+        raise HTTPException(status_code=500, detail="Error obtenint el partit")
+    return MatchDetail(**result)
 
 
 @router.post("", response_model=MatchCreateResponse, status_code=201)
