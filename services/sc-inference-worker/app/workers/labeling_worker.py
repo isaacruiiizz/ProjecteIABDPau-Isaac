@@ -96,7 +96,15 @@ def run(stop_event: threading.Event) -> None:
     )
 
     while not stop_event.is_set():
-        raw = redis_client.blpop(settings.REDIS_QUEUE_LABELING, timeout=5)
+        try:
+            raw = redis_client.blpop(settings.REDIS_QUEUE_LABELING, timeout=5)
+        except (redis.exceptions.TimeoutError, redis.exceptions.ConnectionError) as exc:
+            logger.warning('{"event":"labeling_redis_reconnect","error":"%s"}', str(exc))
+            try:
+                redis_client = _build_redis_client()
+            except Exception:
+                pass
+            continue
         if raw is None:
             continue
 

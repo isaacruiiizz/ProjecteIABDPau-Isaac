@@ -139,7 +139,15 @@ def run(stop_event: threading.Event) -> None:
     queues = [settings.REDIS_QUEUE_FRAMES, settings.REDIS_QUEUE_MODEL_PROMOTED]
 
     while not stop_event.is_set():
-        raw = redis_client.blpop(queues, timeout=5)
+        try:
+            raw = redis_client.blpop(queues, timeout=5)
+        except (redis.exceptions.TimeoutError, redis.exceptions.ConnectionError) as exc:
+            logger.warning('{"event":"inference_redis_reconnect","error":"%s"}', str(exc))
+            try:
+                redis_client = _build_redis_client()
+            except Exception:
+                pass
+            continue
         if raw is None:
             continue
 
