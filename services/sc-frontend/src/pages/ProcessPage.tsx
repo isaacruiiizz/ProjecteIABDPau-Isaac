@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Timer, Undo2, UploadCloud, X } from 'lucide-react';
-import { createMatch, updateMatchConfig, type RoiPoint } from '../api/matches';
+import { AlertCircle, CheckCircle, Loader, Timer, Undo2, UploadCloud, X } from 'lucide-react';
+import { createMatch, getMatch, processMatch, updateMatchConfig, type RoiPoint } from '../api/matches';
 
 type Step = 'upload' | 'roi' | 'time';
 
@@ -45,9 +45,12 @@ export default function ProcessPage() {
   const [videoReady, setVideoReady] = useState(false);
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  const [saving,    setSaving]    = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [done,      setDone]      = useState(false);
+  const [saving,         setSaving]         = useState(false);
+  const [saveError,      setSaveError]      = useState<string | null>(null);
+  const [done,           setDone]           = useState(false);
+  const [processStatus,  setProcessStatus]  = useState<string>('processing');
+  const [progress,       setProgress]       = useState(0);
+  const [processError,   setProcessError]   = useState<string | null>(null);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -275,6 +278,7 @@ export default function ProcessPage() {
     setSaving(true); setSaveError(null);
     try {
       await updateMatchConfig(matchId, roiPoints, startSec, endSec);
+      await processMatch(matchId);
       setDone(true);
     } catch {
       setSaveError('Error desant la configuració. Torna-ho a intentar.');
@@ -282,6 +286,40 @@ export default function ProcessPage() {
       setSaving(false);
     }
   }
+
+  // ── Polling del processament ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!done || !matchId) return;
+    let cancelled = false;
+
+    const progressTimer = setInterval(() => {
+      setProgress(prev => (prev < 88 ? prev + 0.4 : prev));
+    }, 300);
+
+    async function poll() {
+      try {
+        const m = await getMatch(matchId);
+        if (cancelled) return;
+        setProcessStatus(m.status);
+        if (m.status === 'done') {
+          clearInterval(progressTimer);
+          setProgress(100);
+          setTimeout(() => { if (!cancelled) navigate(`/matches/${matchId}/results`); }, 700);
+        } else if (m.status === 'error') {
+          clearInterval(progressTimer);
+          setProcessError('El processament ha fallat. Comprova els partits.');
+        }
+      } catch { /* ignora errors de xarxa puntuals */ }
+    }
+
+    poll();
+    const pollTimer = setInterval(poll, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(progressTimer);
+      clearInterval(pollTimer);
+    };
+  }, [done, matchId, navigate]);
 
   function goBack() {
     const idx = STEP_ORDER.indexOf(step);
@@ -291,23 +329,69 @@ export default function ProcessPage() {
 
   const currentIdx = STEP_ORDER.indexOf(step);
 
-  // ── Done ───────────────────────────────────────────────────────────────────
+  // ── Processament en curs (polling) ─────────────────────────────────────────
   if (done) {
+    const STATUS_LABEL: Record<string, string> = {
+      processing:   'Processant el vídeo i extraient frames...',
+      frames_ready: 'Analitzant jugadors per frame...',
+      done:         'Completat!',
+      error:        'El processament ha fallat.',
+    };
+    const label = STATUS_LABEL[processStatus] ?? 'Processant...';
+    const isDone  = processStatus === 'done';
+    const isError = processStatus === 'error' || !!processError;
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 text-center max-w-sm w-full">
-          <div className="bg-green-100 text-green-600 rounded-full p-4 w-fit mx-auto mb-4">
-            <CheckCircle size={32} />
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8
+                        max-w-sm w-full text-center">
+
+          <div className={`rounded-full p-4 w-fit mx-auto mb-5
+            ${isError ? 'bg-red-100 text-red-500'
+              : isDone ? 'bg-green-100 text-green-600'
+              : 'bg-blue-50 text-blue-600'}`}>
+            {isError
+              ? <AlertCircle size={28} />
+              : isDone
+                ? <CheckCircle size={28} />
+                : <Loader size={28} className="animate-spin" />
+            }
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Configuració desada</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            El processament automàtic s'implementarà al Sprint 4.
-          </p>
-          <button onClick={() => navigate('/')}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium
-                       py-2.5 rounded-lg text-sm transition-colors">
-            Tornar al Dashboard
-          </button>
+
+          <h2 className="text-base font-semibold text-gray-900 mb-1">
+            {isError ? 'Error en el processament' : isDone ? 'Anàlisi completada' : 'Processant el partit'}
+          </h2>
+          <p className="text-sm text-gray-500 mb-5">{processError ?? label}</p>
+
+          {!isError && (
+            <div className="mb-5">
+              <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                <span>{Math.round(progress)}%</span>
+                <span className="capitalize">{processStatus}</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300
+                    ${isDone ? 'bg-green-500' : 'bg-blue-600'}`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {isError && (
+            <button
+              onClick={() => navigate('/matches')}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium
+                         py-2.5 rounded-lg text-sm transition-colors"
+            >
+              Veure partits
+            </button>
+          )}
+
+          {!isError && !isDone && (
+            <p className="text-xs text-gray-400">Això pot trigar uns minuts</p>
+          )}
         </div>
       </div>
     );
