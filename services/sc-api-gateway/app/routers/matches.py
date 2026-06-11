@@ -21,6 +21,22 @@ async def list_matches(
     return [MatchListItem(**r) for r in results]
 
 
+@router.delete("/{match_id}", status_code=204)
+async def delete_match(
+    match_id: str,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_app_db),
+    s3=Depends(get_s3),
+):
+    try:
+        await match_service.delete_match(match_id, current_user.sub, db, s3)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception:
+        logger.exception("Error eliminant el partit")
+        raise HTTPException(status_code=500, detail="Error eliminant el partit")
+
+
 @router.get("/{match_id}", response_model=MatchDetail)
 async def get_match(
     match_id: str,

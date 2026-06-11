@@ -82,3 +82,7 @@ export async function getMatch(matchId: string): Promise<MatchDetail> {
   const { data } = await apiClient.get<MatchDetail>(`/api/v1/matches/${matchId}`);
   return data;
 }
+
+export async function deleteMatch(matchId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/matches/${matchId}`);
+}

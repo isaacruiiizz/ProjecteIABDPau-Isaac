@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, CheckCircle, Clock, ExternalLink, Loader, Play, Plus, Timer, XCircle,
+  AlertCircle, CheckCircle, Clock, ExternalLink, Loader, Play, Plus, Timer, Trash2, XCircle,
 } from 'lucide-react';
-import { getMatches, processMatch, type MatchListItem } from '../api/matches';
+import { deleteMatch, getMatches, processMatch, type MatchListItem } from '../api/matches';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending:      { label: 'Pendent',        color: 'bg-gray-100 text-gray-600',     icon: <Clock size={12} /> },
@@ -56,6 +56,10 @@ export default function MatchesPage() {
   const [error,         setError]         = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [processError,  setProcessError]  = useState<string | null>(null);
+  const [selectedIds,   setSelectedIds]   = useState<Set<string>>(new Set());
+  const [confirmingId,  setConfirmingId]  = useState<string | null>(null);
+  const [deletingIds,   setDeletingIds]   = useState<Set<string>>(new Set());
+  const [deleteError,   setDeleteError]   = useState<string | null>(null);
 
   useEffect(() => {
     getMatches()
@@ -80,6 +84,54 @@ export default function MatchesPage() {
         next.delete(matchId);
         return next;
       });
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === matches.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(matches.map(m => m.match_id)));
+    }
+  }
+
+  async function handleDeleteOne(matchId: string) {
+    setDeletingIds(prev => new Set(prev).add(matchId));
+    setDeleteError(null);
+    try {
+      await deleteMatch(matchId);
+      setMatches(prev => prev.filter(m => m.match_id !== matchId));
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(matchId); return n; });
+    } catch {
+      setDeleteError("No s'ha pogut eliminar el partit. Torna-ho a intentar.");
+    } finally {
+      setDeletingIds(prev => { const n = new Set(prev); n.delete(matchId); return n; });
+      setConfirmingId(null);
+    }
+  }
+
+  async function handleDeleteSelected() {
+    const ids = Array.from(selectedIds);
+    setDeleteError(null);
+    for (const id of ids) {
+      setDeletingIds(prev => new Set(prev).add(id));
+      try {
+        await deleteMatch(id);
+        setMatches(prev => prev.filter(m => m.match_id !== id));
+        setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+      } catch {
+        setDeleteError("Alguns partits no s'han pogut eliminar.");
+      } finally {
+        setDeletingIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+      }
     }
   }
 
@@ -140,6 +192,41 @@ export default function MatchesPage() {
           </div>
         )}
 
+        {/* Error eliminació */}
+        {deleteError && (
+          <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50
+                          border border-red-200 rounded-xl px-4 py-3 mb-3">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span>{deleteError}</span>
+          </div>
+        )}
+
+        {/* Barra d'accions en bloc */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200
+                          rounded-xl px-4 py-2.5 mb-3 text-sm">
+            <span className="text-blue-700 font-medium">
+              {selectedIds.size} seleccionat{selectedIds.size !== 1 ? 's' : ''}
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleSelectAll}
+                className="text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors"
+              >
+                {selectedIds.size === matches.length ? 'Desseleccionar tots' : 'Seleccionar tots'}
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700
+                           text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Trash2 size={12} />
+                Eliminar ({selectedIds.size})
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Llista buida */}
         {!loading && !error && matches.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center">
@@ -161,9 +248,19 @@ export default function MatchesPage() {
             {matches.map((m) => (
               <div
                 key={m.match_id}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm
-                           px-5 py-4 flex items-center gap-4"
+                className={`bg-white rounded-2xl border shadow-sm px-5 py-4 flex items-center gap-4
+                            transition-colors ${selectedIds.has(m.match_id)
+                              ? 'border-blue-300 bg-blue-50/40'
+                              : 'border-gray-200'}`}
               >
+                {/* Checkbox selecció */}
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(m.match_id)}
+                  onChange={() => toggleSelect(m.match_id)}
+                  className="w-4 h-4 shrink-0 accent-blue-600 cursor-pointer"
+                />
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="text-sm font-semibold text-gray-900 truncate">{m.title}</p>
@@ -214,6 +311,41 @@ export default function MatchesPage() {
                       : <Play size={12} />
                     }
                     Processar
+                  </button>
+                )}
+
+                {/* Botó eliminar individual */}
+                {confirmingId === m.match_id ? (
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleDeleteOne(m.match_id)}
+                      disabled={deletingIds.has(m.match_id)}
+                      className="flex items-center gap-1 bg-red-600 hover:bg-red-700
+                                 disabled:opacity-50 text-white text-xs font-medium
+                                 px-2.5 py-1.5 rounded-lg transition-colors"
+                    >
+                      {deletingIds.has(m.match_id)
+                        ? <Loader size={11} className="animate-spin" />
+                        : <Trash2 size={11} />
+                      }
+                      Confirmar
+                    </button>
+                    <button
+                      onClick={() => setConfirmingId(null)}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-1.5 py-1.5
+                                 transition-colors"
+                    >
+                      Cancel·lar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmingId(m.match_id)}
+                    className="shrink-0 p-1.5 text-gray-400 hover:text-red-500
+                               hover:bg-red-50 rounded-lg transition-colors"
+                    title="Eliminar partit"
+                  >
+                    <Trash2 size={15} />
                   </button>
                 )}
               </div>

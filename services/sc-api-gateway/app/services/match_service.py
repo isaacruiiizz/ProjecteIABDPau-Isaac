@@ -98,6 +98,26 @@ async def process_match(match_id: str, redis, db) -> dict:
     return {"match_id": match_id, "status": "processing"}
 
 
+async def delete_match(match_id: str, user_id: str, db, s3) -> None:
+    doc = await match_repository.get_match_by_id(db, match_id)
+    if doc is None or str(doc.get("user_id")) != user_id:
+        raise ValueError("Partit no trobat")
+
+    deleted = await match_repository.delete_match(db, match_id, user_id)
+    if not deleted:
+        raise ValueError("Partit no trobat")
+
+    for bucket, key in [
+        (BUCKET_RAW,    doc.get("video_raw")),
+        (BUCKET_OUTPUT, doc.get("output_video")),
+    ]:
+        if key:
+            try:
+                await asyncio.to_thread(s3.delete_object, Bucket=bucket, Key=key)
+            except Exception:
+                pass
+
+
 async def get_match_detail(match_id: str, user_id: str, db) -> dict:
     doc = await match_repository.get_match_by_id(db, match_id)
     if doc is None or str(doc.get("user_id")) != user_id:

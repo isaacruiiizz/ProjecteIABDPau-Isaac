@@ -38,3 +38,10 @@ async def update_match_status(db: AsyncIOMotorDatabase, match_id: str, status: s
         {"_id": ObjectId(match_id)},
         {"$set": {"status": status, "updated_at": datetime.now(timezone.utc)}},
     )
+
+
+async def delete_match(db: AsyncIOMotorDatabase, match_id: str, user_id: str) -> bool:
+    result = await db["matches"].delete_one(
+        {"_id": ObjectId(match_id), "user_id": user_id}
+    )
+    return result.deleted_count > 0

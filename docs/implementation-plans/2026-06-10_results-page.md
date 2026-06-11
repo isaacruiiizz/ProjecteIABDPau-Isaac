@@ -1,6 +1,6 @@
 # PJM-69 — ResultsPage: vídeo processat descarregable
 
-**Estat:** En Procés
+**Estat:** Completat ✓ (2026-06-10)
 **Data:** 2026-06-10
 
 ## Objectiu
