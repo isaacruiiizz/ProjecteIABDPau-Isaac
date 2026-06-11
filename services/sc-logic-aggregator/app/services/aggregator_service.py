@@ -121,18 +121,18 @@ def _compute_stats(frame_map: dict[int, dict], start_s: float, end_s: float) -> 
 
 def _generate_ai_report(stats: dict, ollama_base_url: str) -> str | None:
     prompt = (
-        "Ets un analista de FUTBOL SALA. Un sistema de visió per computador ha analitzat "
-        "un fragment de partit i ha obtingut les estadístiques següents:\n\n"
-        f"- Fragment analitzat: {stats['duration_s']:.0f} s ({stats['total_frames']} frames)\n"
-        f"- Jugadors detectats de mitjana per frame: {stats['avg_players_per_frame']:.1f} "
-        f"({stats['avg_own_per_frame']:.1f} propis, {stats['avg_other_per_frame']:.1f} rivals)\n"
-        f"- % de presència de l'equip propi: {stats['pct_own']:.0f}%\n"
-        f"- Fiabilitat de les deteccions: {stats['avg_confidence']:.0%}\n"
-        f"- Pic d'intensitat: {stats['max_density_count']} jugadors al segon {stats['max_density_time_s']:.1f}\n\n"
-        "Escriu un resum inicial en 3-4 frases en català. "
-        "Interpreta les dades en clau de futbol sala (5 jugadors per equip a la pista), "
-        "comenta la distribució entre equips, la qualitat de les deteccions i el moment de màxima intensitat. "
-        "Escriu directament sense introducció."
+        "Eres un analista de FÚTBOL SALA. Un sistema de visión por computador ha analizado "
+        "un fragmento de partido y ha obtenido las siguientes estadísticas:\n\n"
+        f"- Fragmento analizado: {stats['duration_s']:.0f} s ({stats['total_frames']} frames)\n"
+        f"- Jugadores detectados de media por frame: {stats['avg_players_per_frame']:.1f} "
+        f"({stats['avg_own_per_frame']:.1f} propios, {stats['avg_other_per_frame']:.1f} rivales)\n"
+        f"- % de presencia del equipo propio: {stats['pct_own']:.0f}%\n"
+        f"- Fiabilidad de las detecciones: {stats['avg_confidence']:.0%}\n"
+        f"- Pico de intensidad: {stats['max_density_count']} jugadores en el segundo {stats['max_density_time_s']:.1f}\n\n"
+        "Escribe un resumen inicial en 3-4 frases en castellano. "
+        "Interpreta los datos en clave de fútbol sala (5 jugadores por equipo en pista), "
+        "comenta la distribución entre equipos, la calidad de las detecciones y el momento de máxima intensidad. "
+        "Escribe directamente sin introducción."
     )
     try:
         resp = requests.post(
