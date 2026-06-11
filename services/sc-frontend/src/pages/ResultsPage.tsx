@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Download, Film, Loader, Play, Timer } from 'lucide-react';
-import { getMatch, type MatchDetail } from '../api/matches';
+import { AlertCircle, Bot, CheckCircle, Download, Film, Loader, Play, Timer, Users } from 'lucide-react';
+import { getMatch, type AiStats, type MatchDetail } from '../api/matches';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -21,6 +21,73 @@ function formatDuration(start: number | null, end: number | null): string {
 }
 
 const NOTES_KEY = (id: string) => `sc-notes-${id}`;
+
+function StatItem({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="flex flex-col items-center text-center px-3 py-3">
+      <span className="text-lg font-bold text-gray-900">{value}</span>
+      {sub && <span className="text-xs text-gray-400">{sub}</span>}
+      <span className="text-xs text-gray-500 mt-0.5">{label}</span>
+    </div>
+  );
+}
+
+function StatsCard({ stats }: { stats: AiStats }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Users size={16} className="text-blue-500 shrink-0" />
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          Estadístiques de detecció
+        </p>
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-gray-100 mb-3">
+        <StatItem
+          label="Jugadors / frame"
+          value={stats.avg_players_per_frame.toFixed(1)}
+        />
+        <StatItem
+          label="Equip propi"
+          value={stats.avg_own_per_frame.toFixed(1)}
+          sub={`${stats.pct_own.toFixed(0)}%`}
+        />
+        <StatItem
+          label="Rival"
+          value={stats.avg_other_per_frame.toFixed(1)}
+        />
+      </div>
+      <div className="grid grid-cols-3 divide-x divide-gray-100 border-t border-gray-100 pt-3">
+        <StatItem
+          label="Confiança mitjana"
+          value={`${(stats.avg_confidence * 100).toFixed(0)}%`}
+        />
+        <StatItem
+          label="Frames analitzats"
+          value={String(stats.total_frames)}
+        />
+        <StatItem
+          label="Pic de densitat"
+          value={`${stats.max_density_time_s.toFixed(0)}s`}
+          sub={`${stats.max_density_count} jugadors`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AiReportCard({ report }: { report: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Bot size={16} className="text-violet-500 shrink-0" />
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          Anàlisi IA
+        </p>
+      </div>
+      <p className="text-sm text-gray-700 leading-relaxed">{report}</p>
+    </div>
+  );
+}
 
 export default function ResultsPage() {
   const { id } = useParams<{ id: string }>();
@@ -193,6 +260,12 @@ export default function ResultsPage() {
                 </p>
               )}
             </div>
+
+            {/* Estadístiques IA */}
+            {match.ai_stats && <StatsCard stats={match.ai_stats} />}
+
+            {/* Informe narratiu */}
+            {match.ai_report && <AiReportCard report={match.ai_report} />}
 
             {/* Notes de l'entrenador */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-5">

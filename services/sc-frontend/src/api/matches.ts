@@ -68,6 +68,19 @@ export async function processMatch(matchId: string): Promise<{ match_id: string;
   return data;
 }
 
+export interface AiStats {
+  total_frames: number;
+  avg_players_per_frame: number;
+  avg_own_per_frame: number;
+  avg_other_per_frame: number;
+  pct_own: number;
+  avg_confidence: number;
+  max_density_frame: number;
+  max_density_time_s: number;
+  max_density_count: number;
+  duration_s: number;
+}
+
 export interface MatchDetail {
   match_id: string;
   title: string;
@@ -76,6 +89,8 @@ export interface MatchDetail {
   start_seconds: number | null;
   end_seconds: number | null;
   download_url: string | null;
+  ai_stats: AiStats | null;
+  ai_report: string | null;
 }
 
 export async function getMatch(matchId: string): Promise<MatchDetail> {

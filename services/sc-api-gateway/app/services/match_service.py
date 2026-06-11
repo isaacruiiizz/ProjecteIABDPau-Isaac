@@ -158,6 +158,8 @@ async def get_match_detail(match_id: str, user_id: str, db) -> dict:
         "start_seconds": doc.get("start_seconds"),
         "end_seconds":   doc.get("end_seconds"),
         "download_url":  download_url,
+        "ai_stats":      doc.get("ai_stats"),
+        "ai_report":     doc.get("ai_report"),
     }
 
 

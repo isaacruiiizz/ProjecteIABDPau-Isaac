@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # MongoDB
     MONGO_APP_URI: str
 
+    # Ollama
+    OLLAMA_BASE_URL: str = "http://sc-ollama:11434"
+
     # Sentry
     SENTRY_DSN: str = ""
 

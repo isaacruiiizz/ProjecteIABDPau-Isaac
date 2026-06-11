@@ -61,3 +61,5 @@ class MatchDetail(BaseModel):
     start_seconds: float | None = None
     end_seconds: float | None = None
     download_url: str | None = None
+    ai_stats: dict | None = None
+    ai_report: str | None = None

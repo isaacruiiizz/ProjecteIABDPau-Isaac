@@ -34,6 +34,7 @@ volumes:
   sc-grafana-data:
   sc-prometheus-data:
   sc-label-studio-data:
+  sc-ollama-data:
 
 # ─── Serveis ─────────────────────────────────────────────────────────────────
 services:
@@ -173,6 +174,7 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${SC_LOGIC_AGGREGATOR_MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${SC_LOGIC_AGGREGATOR_MINIO_PASSWORD}
+      OLLAMA_BASE_URL: http://sc-ollama:11434
     networks:
       - sc-backend-net
     depends_on:
@@ -182,6 +184,22 @@ services:
         condition: service_healthy
       sc-mongodb:
         condition: service_healthy
+    logging: *default-logging
+
+  sc-ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 20 && ollama pull qwen2.5:3b && wait"]
+    volumes:
+      - sc-ollama-data:/root/.ollama
+    networks:
+      - sc-backend-net
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 120s
     logging: *default-logging
 
   sc-active-learner:
