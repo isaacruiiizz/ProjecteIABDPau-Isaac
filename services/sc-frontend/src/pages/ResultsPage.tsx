@@ -44,16 +44,23 @@ export default function ResultsPage() {
     setNotes(localStorage.getItem(NOTES_KEY(id)) ?? '');
   }, [id]);
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!match?.download_url) return;
     setDownloading(true);
-    const a = document.createElement('a');
-    a.href = match.download_url;
-    a.download = `${match.title.replace(/\s+/g, '_')}_processat.mp4`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => setDownloading(false), 1500);
+    try {
+      const res = await fetch(match.download_url);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${match.title.replace(/\s+/g, '_')}_processat.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   function handleSaveNotes() {
