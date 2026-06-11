@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Loader, Timer, Undo2, UploadCloud, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader, RotateCcw, Timer, Undo2, UploadCloud, X } from 'lucide-react';
 import { createMatch, getMatch, processMatch, updateMatchConfig, type RoiPoint } from '../api/matches';
 
 type Step = 'upload' | 'roi' | 'time';
@@ -45,12 +45,15 @@ export default function ProcessPage() {
   const [videoReady, setVideoReady] = useState(false);
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  const [saving,         setSaving]         = useState(false);
-  const [saveError,      setSaveError]      = useState<string | null>(null);
-  const [done,           setDone]           = useState(false);
-  const [processStatus,  setProcessStatus]  = useState<string>('processing');
-  const [progress,       setProgress]       = useState(0);
-  const [processError,   setProcessError]   = useState<string | null>(null);
+  const [saving,            setSaving]            = useState(false);
+  const [saveError,         setSaveError]         = useState<string | null>(null);
+  const [done,              setDone]              = useState(false);
+  const [processStatus,     setProcessStatus]     = useState<string>('processing');
+  const [progress,          setProgress]          = useState(0);
+  const [processError,      setProcessError]      = useState<string | null>(null);
+  const [reprocessing,      setReprocessing]      = useState(false);
+  const [pollingStartedAt,  setPollingStartedAt]  = useState<number | null>(null);
+  const [stuck,             setStuck]             = useState(false);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -291,6 +294,9 @@ export default function ProcessPage() {
   useEffect(() => {
     if (!done || !matchId) return;
     let cancelled = false;
+    const startedAt = Date.now();
+    setPollingStartedAt(startedAt);
+    setStuck(false);
 
     const progressTimer = setInterval(() => {
       setProgress(prev => (prev < 88 ? prev + 0.4 : prev));
@@ -307,7 +313,9 @@ export default function ProcessPage() {
           setTimeout(() => { if (!cancelled) navigate(`/matches/${matchId}/results`); }, 700);
         } else if (m.status === 'error') {
           clearInterval(progressTimer);
-          setProcessError('El processament ha fallat. Comprova els partits.');
+          setProcessError('El processament ha fallat. Revisa la configuració del partit i torna a intentar-ho.');
+        } else if (Date.now() - startedAt > 5 * 60 * 1000) {
+          setStuck(true);
         }
       } catch { /* ignora errors de xarxa puntuals */ }
     }
@@ -320,6 +328,24 @@ export default function ProcessPage() {
       clearInterval(pollTimer);
     };
   }, [done, matchId, navigate]);
+
+  async function handleReprocess() {
+    if (!matchId) return;
+    setReprocessing(true);
+    setProcessError(null);
+    setStuck(false);
+    try {
+      await processMatch(matchId);
+      setProcessStatus('processing');
+      setProgress(0);
+      setDone(false);
+      setTimeout(() => setDone(true), 100);
+    } catch {
+      setProcessError("No s'ha pogut reiniciar el processament. Torna-ho a intentar.");
+    } finally {
+      setReprocessing(false);
+    }
+  }
 
   function goBack() {
     const idx = STEP_ORDER.indexOf(step);
@@ -340,6 +366,7 @@ export default function ProcessPage() {
     const label = STATUS_LABEL[processStatus] ?? 'Processant...';
     const isDone  = processStatus === 'done';
     const isError = processStatus === 'error' || !!processError;
+    const isStuck = stuck && !isError && !isDone;
 
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -380,16 +407,53 @@ export default function ProcessPage() {
           )}
 
           {isError && (
-            <button
-              onClick={() => navigate('/matches')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium
-                         py-2.5 rounded-lg text-sm transition-colors"
-            >
-              Veure partits
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={handleReprocess}
+                disabled={reprocessing}
+                className="w-full flex items-center justify-center gap-2
+                           bg-orange-500 hover:bg-orange-600 disabled:opacity-60
+                           text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
+              >
+                {reprocessing
+                  ? <Loader size={15} className="animate-spin" />
+                  : <RotateCcw size={15} />
+                }
+                {reprocessing ? 'Reiniciant...' : 'Reprocessar'}
+              </button>
+              <button
+                onClick={() => navigate('/matches')}
+                className="w-full text-sm text-gray-500 hover:text-gray-700
+                           py-2 transition-colors"
+              >
+                Veure partits
+              </button>
+            </div>
           )}
 
-          {!isError && !isDone && (
+          {isStuck && (
+            <div className="mt-1 space-y-2">
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200
+                             rounded-lg px-3 py-2">
+                El processament triga més del previst. Potser s'ha enganxat.
+              </p>
+              <button
+                onClick={handleReprocess}
+                disabled={reprocessing}
+                className="w-full flex items-center justify-center gap-2
+                           border border-orange-300 hover:bg-orange-50 disabled:opacity-60
+                           text-orange-600 font-medium py-2 rounded-lg text-sm transition-colors"
+              >
+                {reprocessing
+                  ? <Loader size={14} className="animate-spin" />
+                  : <RotateCcw size={14} />
+                }
+                {reprocessing ? 'Reiniciant...' : 'Forçar reprocessat'}
+              </button>
+            </div>
+          )}
+
+          {!isError && !isDone && !isStuck && (
             <p className="text-xs text-gray-400">Això pot trigar uns minuts</p>
           )}
         </div>

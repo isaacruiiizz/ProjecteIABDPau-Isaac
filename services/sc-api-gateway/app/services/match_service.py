@@ -76,10 +76,20 @@ async def process_match(match_id: str, redis, db) -> dict:
     doc = await match_repository.get_match_by_id(db, match_id)
     if doc is None:
         raise ValueError("Partit no trobat")
-    if doc["status"] in ("processing", "done"):
-        raise RuntimeError(f"El partit ja està en estat '{doc['status']}'")
+    if doc["status"] == "done":
+        raise RuntimeError("El partit ja està completat")
     if not doc.get("video_raw"):
         raise RuntimeError("El partit no té cap vídeo pujat")
+
+    if doc["status"] == "processing":
+        for key in [
+            f"frames:{match_id}:meta",
+            f"frames:{match_id}:results",
+            f"frames:{match_id}:total",
+            f"frames:{match_id}:rendering",
+        ]:
+            await redis.delete(key)
+        logger.info("process_match: claus Redis netejades per reprocessat match_id=%s", match_id)
 
     await match_repository.update_match_status(db, match_id, "processing")
 

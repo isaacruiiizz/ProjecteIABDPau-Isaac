@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, CheckCircle, Clock, ExternalLink, Loader, Play, Plus, Timer, Trash2, XCircle,
+  AlertCircle, CheckCircle, Clock, ExternalLink, Loader, Play, Plus, RotateCcw, Timer, Trash2, XCircle,
 } from 'lucide-react';
 import { deleteMatch, getMatches, processMatch, type MatchListItem } from '../api/matches';
 
@@ -44,9 +44,13 @@ function formatDuration(start: number | null, end: number | null): string {
 }
 
 function canProcess(m: MatchListItem): boolean {
-  return (m.status === 'pending' || m.status === 'error') &&
+  return (m.status === 'pending' || m.status === 'error' || m.status === 'processing') &&
     m.has_roi &&
     m.start_seconds !== null;
+}
+
+function isReprocess(m: MatchListItem): boolean {
+  return m.status === 'error' || m.status === 'processing';
 }
 
 export default function MatchesPage() {
@@ -248,10 +252,12 @@ export default function MatchesPage() {
             {matches.map((m) => (
               <div
                 key={m.match_id}
-                className={`bg-white rounded-2xl border shadow-sm px-5 py-4 flex items-center gap-4
+                className={`rounded-2xl border shadow-sm px-5 py-4 flex items-center gap-4
                             transition-colors ${selectedIds.has(m.match_id)
                               ? 'border-blue-300 bg-blue-50/40'
-                              : 'border-gray-200'}`}
+                              : m.status === 'error'
+                                ? 'border-red-200 bg-red-50/40'
+                                : 'border-gray-200 bg-white'}`}
               >
                 {/* Checkbox selecció */}
                 <input
@@ -301,16 +307,18 @@ export default function MatchesPage() {
                   <button
                     onClick={() => handleProcess(m.match_id)}
                     disabled={processingIds.has(m.match_id)}
-                    className="shrink-0 flex items-center gap-1.5 bg-blue-600
-                               hover:bg-blue-700 disabled:opacity-50
+                    className={`shrink-0 flex items-center gap-1.5 disabled:opacity-50
                                disabled:cursor-not-allowed text-white text-xs
-                               font-medium px-3 py-1.5 rounded-lg transition-colors"
+                               font-medium px-3 py-1.5 rounded-lg transition-colors
+                               ${isReprocess(m)
+                                 ? 'bg-orange-500 hover:bg-orange-600'
+                                 : 'bg-blue-600 hover:bg-blue-700'}`}
                   >
                     {processingIds.has(m.match_id)
                       ? <Loader size={12} className="animate-spin" />
-                      : <Play size={12} />
+                      : isReprocess(m) ? <RotateCcw size={12} /> : <Play size={12} />
                     }
-                    Processar
+                    {isReprocess(m) ? 'Reprocessar' : 'Processar'}
                   </button>
                 )}
 
