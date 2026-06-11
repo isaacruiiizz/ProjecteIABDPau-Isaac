@@ -189,7 +189,7 @@ services:
   sc-ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 20 && ollama pull qwen2.5:3b && wait"]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 20 && (ollama list | grep -q qwen2.5 || ollama pull qwen2.5:3b || true) && wait"]
     volumes:
       - sc-ollama-data:/root/.ollama
     networks:
