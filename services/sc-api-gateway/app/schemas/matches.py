@@ -53,6 +53,21 @@ class ProcessMatchResponse(BaseModel):
     status: str
 
 
+class AiRefineRequest(BaseModel):
+    user_context: str
+
+    @field_validator('user_context')
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('El context no pot estar buit')
+        return v.strip()
+
+
+class AiRefineResponse(BaseModel):
+    ai_report: str
+
+
 class MatchDetail(BaseModel):
     match_id: str
     title: str

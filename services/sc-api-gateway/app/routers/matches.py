@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.dependencies import get_app_db, get_current_user, get_redis, get_s3
 from app.schemas.auth import TokenPayload
-from app.schemas.matches import MatchConfigRequest, MatchConfigResponse, MatchCreateResponse, MatchDetail, MatchListItem, ProcessMatchResponse
+from app.schemas.matches import AiRefineRequest, AiRefineResponse, MatchConfigRequest, MatchConfigResponse, MatchCreateResponse, MatchDetail, MatchListItem, ProcessMatchResponse
 from app.services import match_service
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,30 @@ async def process_match(
         logger.exception("Error iniciant el processament del partit")
         raise HTTPException(status_code=500, detail="Error iniciant el processament")
     return ProcessMatchResponse(**result)
+
+
+@router.post("/{match_id}/ai-refine", response_model=AiRefineResponse)
+async def ai_refine(
+    match_id: str,
+    body: AiRefineRequest,
+    current_user: TokenPayload = Depends(get_current_user),
+    db=Depends(get_app_db),
+):
+    try:
+        text = await match_service.refine_ai_report(
+            match_id=match_id,
+            user_id=current_user.sub,
+            user_context=body.user_context,
+            db=db,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception:
+        logger.exception("Error generant l'anàlisi refinada")
+        raise HTTPException(status_code=500, detail="Error generant l'anàlisi detallada")
+    return AiRefineResponse(ai_report=text)
 
 
 @router.patch("/{match_id}/config", response_model=MatchConfigResponse)

@@ -101,3 +101,11 @@ export async function getMatch(matchId: string): Promise<MatchDetail> {
 export async function deleteMatch(matchId: string): Promise<void> {
   await apiClient.delete(`/api/v1/matches/${matchId}`);
 }
+
+export async function refineAiReport(matchId: string, userContext: string): Promise<string> {
+  const { data } = await apiClient.post<{ ai_report: string }>(
+    `/api/v1/matches/${matchId}/ai-refine`,
+    { user_context: userContext },
+  );
+  return data.ai_report;
+}

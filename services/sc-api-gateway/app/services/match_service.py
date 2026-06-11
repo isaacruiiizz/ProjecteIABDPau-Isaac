@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timezone
 
 import boto3
+import httpx
 from bson import ObjectId
 
 from app.config import settings
@@ -161,6 +162,59 @@ async def get_match_detail(match_id: str, user_id: str, db) -> dict:
         "ai_stats":      doc.get("ai_stats"),
         "ai_report":     doc.get("ai_report"),
     }
+
+
+async def refine_ai_report(match_id: str, user_id: str, user_context: str, db) -> str:
+    doc = await match_repository.get_match_by_id(db, match_id)
+    if doc is None or str(doc.get("user_id")) != user_id:
+        raise ValueError("Partit no trobat")
+    if doc["status"] != "done":
+        raise RuntimeError("El partit encara no s'ha processat")
+
+    stats   = doc.get("ai_stats") or {}
+    initial = doc.get("ai_report") or "No disponible."
+
+    def _fmt(key: str, default="—") -> str:
+        v = stats.get(key)
+        return str(v) if v is not None else default
+
+    prompt = (
+        "Ets un analista tàctic de futbol expert. Disposes de les dades objectives d'un vídeo "
+        "processat per visió artificial i del context aportat per l'entrenador. "
+        "Has de generar una anàlisi tàctica professional, detallada i visual en català.\n\n"
+        "--- ESTADÍSTIQUES TÈCNIQUES (IA) ---\n"
+        f"• Frames analitzats: {_fmt('total_frames')}\n"
+        f"• Durada analitzada: {_fmt('duration_s')} s\n"
+        f"• Jugadors detectats de mitjana/frame: {_fmt('avg_players_per_frame')}\n"
+        f"• Jugadors propis de mitjana: {_fmt('avg_own_per_frame')} ({_fmt('pct_own')}%)\n"
+        f"• Jugadors rivals de mitjana: {_fmt('avg_other_per_frame')}\n"
+        f"• Confiança de detecció: {float(stats['avg_confidence']) * 100:.0f}%\n"
+        f"• Pic de densitat: {_fmt('max_density_count')} jugadors al segon {_fmt('max_density_time_s')}\n\n"
+        "--- ANÀLISI AUTOMÀTICA INICIAL ---\n"
+        f"{initial}\n\n"
+        "--- CONTEXT DE L'ENTRENADOR ---\n"
+        f"{user_context}\n\n"
+        "Ara escriu l'anàlisi tàctica detallada. Estructura-la amb seccions en negreta (**Títol:**) "
+        "i llistes amb guions (- punt). Inclou obligatòriament:\n"
+        "**Situació del joc:** (resum de la fase analitzada)\n"
+        "**Anàlisi tàctica:** (formació, pressing, transicions, moviments detectats)\n"
+        "**Moments clau:** (instants destacats basats en la densitat i el context)\n"
+        "**Punts forts i febles:** (del propi equip i del rival)\n"
+        "**Recomanacions:** (aspectes a treballar per a l'entrenador)\n\n"
+        "Escriu directament l'anàlisi sense introducció, en 200-350 paraules."
+    )
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(
+            f"{settings.OLLAMA_BASE_URL}/api/generate",
+            json={"model": "qwen2.5:3b", "prompt": prompt, "stream": False},
+        )
+        resp.raise_for_status()
+
+    text = resp.json().get("response", "").strip()
+    if not text:
+        raise RuntimeError("Ollama no ha retornat cap resposta")
+    return text
 
 
 async def update_config(

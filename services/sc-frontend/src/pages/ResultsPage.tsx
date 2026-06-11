@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, Bot, CheckCircle, Download, Film, Loader, Play, Timer, Users } from 'lucide-react';
-import { getMatch, type AiStats, type MatchDetail } from '../api/matches';
+import { AlertCircle, Bot, CheckCircle, Download, Film, Loader, Play, RefreshCw, Timer, Users } from 'lucide-react';
+import { getMatch, refineAiReport, type AiStats, type MatchDetail } from '../api/matches';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -75,16 +75,122 @@ function StatsCard({ stats }: { stats: AiStats }) {
   );
 }
 
-function AiReportCard({ report }: { report: string }) {
+function renderReport(text: string) {
+  return text.split('\n').map((line, i) => {
+    const bold = line.match(/^\*\*(.+?)\*\*:?$/);
+    if (bold) return (
+      <p key={i} className="font-semibold text-gray-900 mt-4 mb-1">{bold[1]}</p>
+    );
+    if (line.startsWith('- ')) return (
+      <li key={i} className="ml-4 text-sm text-gray-700 leading-relaxed list-disc">{line.slice(2)}</li>
+    );
+    if (line.trim() === '') return <div key={i} className="h-1" />;
+    return <p key={i} className="text-sm text-gray-700 leading-relaxed">{line}</p>;
+  });
+}
+
+function AiReportCard({ report, matchId }: { report: string; matchId: string }) {
+  const [tab,         setTab]         = useState<'auto' | 'detail'>('auto');
+  const [context,     setContext]     = useState('');
+  const [refined,     setRefined]     = useState<string | null>(null);
+  const [loading,     setLoading]     = useState(false);
+  const [refineError, setRefineError] = useState<string | null>(null);
+
+  async function handleRefine() {
+    setLoading(true);
+    setRefineError(null);
+    try {
+      const result = await refineAiReport(matchId, context);
+      setRefined(result);
+      setTab('detail');
+    } catch {
+      setRefineError("No s'ha pogut generar l'anàlisi. Comprova que Ollama està actiu.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Bot size={16} className="text-violet-500 shrink-0" />
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          Anàlisi IA
-        </p>
+      {/* Capçalera + pestanyes */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Bot size={16} className="text-violet-500 shrink-0" />
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Anàlisi IA</p>
+        </div>
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+          <button
+            onClick={() => setTab('auto')}
+            className={`px-3 py-1.5 transition-colors ${tab === 'auto'
+              ? 'bg-violet-600 text-white'
+              : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            Automàtica
+          </button>
+          <button
+            onClick={() => setTab('detail')}
+            className={`px-3 py-1.5 transition-colors flex items-center gap-1 ${tab === 'detail'
+              ? 'bg-violet-600 text-white'
+              : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            Detallada
+            {refined && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />}
+          </button>
+        </div>
       </div>
-      <p className="text-sm text-gray-700 leading-relaxed">{report}</p>
+
+      {/* Pestanya automàtica */}
+      {tab === 'auto' && (
+        <div className="space-y-0.5">{renderReport(report)}</div>
+      )}
+
+      {/* Pestanya detallada */}
+      {tab === 'detail' && (
+        <div className="space-y-4">
+          {refined && (
+            <div className="space-y-0.5 pb-4 border-b border-gray-100">
+              {renderReport(refined)}
+            </div>
+          )}
+
+          {refineError && (
+            <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50
+                            border border-red-200 rounded-xl px-4 py-3">
+              <AlertCircle size={15} className="mt-0.5 shrink-0" />
+              <span>{refineError}</span>
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">
+              {refined ? 'Afegeix més context i regenera:' : 'Descriu el context del partit:'}
+            </p>
+            <textarea
+              value={context}
+              onChange={e => setContext(e.target.value)}
+              placeholder="Ex: Érem l'equip verd, jugàvem de visitants. Primera part del segon temps, anàvem perdent 0-1. L'equip rival feia pressió alta amb un 4-3-3. El nostre extrem dret estava lesionat..."
+              rows={4}
+              className="w-full resize-none text-sm text-gray-700 placeholder-gray-300
+                         border border-gray-200 rounded-xl px-4 py-3
+                         focus:outline-none focus:ring-2 focus:ring-violet-500
+                         focus:border-transparent transition-shadow"
+            />
+          </div>
+
+          <button
+            onClick={handleRefine}
+            disabled={loading || !context.trim()}
+            className="w-full flex items-center justify-center gap-2 bg-violet-600
+                       hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed
+                       text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+          >
+            {loading
+              ? <><Loader size={15} className="animate-spin" /> Generant anàlisi… (pot trigar ~60s)</>
+              : <><RefreshCw size={15} /> {refined ? 'Regenerar anàlisi' : 'Generar anàlisi detallada'}</>
+            }
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -265,7 +371,7 @@ export default function ResultsPage() {
             {match.ai_stats && <StatsCard stats={match.ai_stats} />}
 
             {/* Informe narratiu */}
-            {match.ai_report && <AiReportCard report={match.ai_report} />}
+            {match.ai_report && <AiReportCard report={match.ai_report} matchId={match.match_id} />}
 
             {/* Notes de l'entrenador */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-5">
