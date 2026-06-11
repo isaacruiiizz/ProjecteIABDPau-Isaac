@@ -178,30 +178,70 @@ async def refine_ai_report(match_id: str, user_id: str, user_context: str, db) -
         v = stats.get(key)
         return str(v) if v is not None else default
 
+    conf_pct  = f"{float(stats['avg_confidence']) * 100:.0f}%" if stats.get('avg_confidence') else "—"
+    max_time  = _fmt('max_density_time_s')
+    max_count = _fmt('max_density_count')
+
     prompt = (
-        "Ets un analista tàctic de futbol expert. Disposes de les dades objectives d'un vídeo "
-        "processat per visió artificial i del context aportat per l'entrenador. "
-        "Has de generar una anàlisi tàctica professional, detallada i visual en català.\n\n"
-        "--- ESTADÍSTIQUES TÈCNIQUES (IA) ---\n"
-        f"• Frames analitzats: {_fmt('total_frames')}\n"
-        f"• Durada analitzada: {_fmt('duration_s')} s\n"
-        f"• Jugadors detectats de mitjana/frame: {_fmt('avg_players_per_frame')}\n"
-        f"• Jugadors propis de mitjana: {_fmt('avg_own_per_frame')} ({_fmt('pct_own')}%)\n"
-        f"• Jugadors rivals de mitjana: {_fmt('avg_other_per_frame')}\n"
-        f"• Confiança de detecció: {float(stats['avg_confidence']) * 100:.0f}%\n"
-        f"• Pic de densitat: {_fmt('max_density_count')} jugadors al segon {_fmt('max_density_time_s')}\n\n"
-        "--- ANÀLISI AUTOMÀTICA INICIAL ---\n"
+        "Ets un analista tàctic expert en FUTBOL SALA (futsal). "
+        "Tens accés a dades objectives d'un fragment de partit obtingudes per visió per computador "
+        "i al context real aportat per l'entrenador/a. "
+        "La teva missió és generar un informe tàctic professional, concret i accionable en català.\n\n"
+
+        "NOTES SOBRE LES DADES:\n"
+        "- El sistema detecta jugadors per color de samarreta i els classifica com a 'propis' o 'rivals'\n"
+        "- En futbol sala hi ha màxim 5 jugadors per equip a la pista (porter inclòs)\n"
+        "- Una alta densitat en un instant concret indica pressió alta, jugada d'estratègia o disputa al centre\n"
+        "- Usa el context de l'entrenador/a per interpretar les anomalies numèriques\n\n"
+
+        "DADES OBJECTIVES (IA):\n"
+        f"• Fragment analitzat: {_fmt('duration_s')} s  |  {_fmt('total_frames')} frames\n"
+        f"• Jugadors detectats (promig/frame): {_fmt('avg_players_per_frame')} totals "
+        f"→ {_fmt('avg_own_per_frame')} propis ({_fmt('pct_own')}%) / {_fmt('avg_other_per_frame')} rivals\n"
+        f"• Fiabilitat de les deteccions: {conf_pct}\n"
+        f"• PIC D'INTENSITAT: {max_count} jugadors al segon {max_time} "
+        "(màxima aglomeració — probable pressió, estratègia o disputa decisiva)\n\n"
+
+        "PRIMERA LECTURA AUTOMÀTICA (sense context):\n"
         f"{initial}\n\n"
-        "--- CONTEXT DE L'ENTRENADOR ---\n"
+
+        "CONTEXT DE L'ENTRENADOR/A:\n"
         f"{user_context}\n\n"
-        "Ara escriu l'anàlisi tàctica detallada. Estructura-la amb seccions en negreta (**Títol:**) "
-        "i llistes amb guions (- punt). Inclou obligatòriament:\n"
-        "**Situació del joc:** (resum de la fase analitzada)\n"
-        "**Anàlisi tàctica:** (formació, pressing, transicions, moviments detectats)\n"
-        "**Moments clau:** (instants destacats basats en la densitat i el context)\n"
-        "**Punts forts i febles:** (del propi equip i del rival)\n"
-        "**Recomanacions:** (aspectes a treballar per a l'entrenador)\n\n"
-        "Escriu directament l'anàlisi sense introducció, en 200-350 paraules."
+
+        "INSTRUCCIONS PER A L'INFORME:\n"
+        "- Usa la terminologia específica del futbol sala: porter, cierre, ala dreta/esquerra, pivot, "
+        "sistemes tàctics (2-2, 1-2-1 en diamant, 3-1, 1-3), pressing 4+1, portero-jugador, "
+        "rotació defensiva, basculació, transició atac-defensa, doble pivot, trap de pressing, "
+        "sortida de porter, bloc defensiu baix, passada interior, joc de cantonada.\n"
+        "- Interpreta les dades numèriques a la llum del context de l'entrenador/a.\n"
+        "- Cita el segon exacte del pic d'intensitat i explica-ho tàcticament.\n"
+        "- Les recomanacions han de ser exercicis o situacions concretes d'entrenament.\n"
+        "- Escriu directament l'informe, sense preàmbul ni conclusió genèrica.\n\n"
+
+        "ESTRUCTURA DE L'INFORME (segueix-la exactament, usa **Títol:** i guions -):\n\n"
+
+        "**Lectura del fragment:**\n"
+        "- Descriu la fase de joc, el ritme i la distribució sobre la pista\n"
+        "- Relaciona les dades numèriques amb el que va passar realment\n\n"
+
+        "**Sistema i comportament tàctic:**\n"
+        "- Sistema defensiu i ofensiu detectat (propi i rival)\n"
+        "- Rol del pivot, el cierre i les ales en la fase analitzada\n"
+        "- Pressing, cobertures i transicions observades\n\n"
+
+        f"**Moment clau (s. {max_time}):**\n"
+        f"- Per què hi ha {max_count} jugadors concentrats en aquest instant?\n"
+        "- Com es relaciona amb el context descrit? Quina jugada o situació podria ser?\n\n"
+
+        "**Diagnòstic de l'equip:**\n"
+        "- Punts forts que cal mantenir i potenciar\n"
+        "- Vulnerabilitats prioritàries (màxim 3, ordenades per impacte)\n\n"
+
+        "**Pla d'acció per a l'entrenament:**\n"
+        "- Proposa 3-4 exercicis o situacions específiques de futbol sala per corregir els punts febles\n"
+        "- Cada punt ha de ser directament aplicable a la propera sessió\n\n"
+
+        "Longitud total: 300-400 paraules. To directe, professional i orientat a la millora."
     )
 
     async with httpx.AsyncClient(timeout=120.0) as client:

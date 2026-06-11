@@ -168,7 +168,7 @@ function AiReportCard({ report, matchId }: { report: string; matchId: string }) 
             <textarea
               value={context}
               onChange={e => setContext(e.target.value)}
-              placeholder="Ex: Érem l'equip verd, jugàvem de visitants. Primera part del segon temps, anàvem perdent 0-1. L'equip rival feia pressió alta amb un 4-3-3. El nostre extrem dret estava lesionat..."
+              placeholder="Ex: Érem l'equip de samarretes blaves, jugàvem de local. Segon temps, anàvem perdent 1-2. El rival jugava en 1-2-1 i ens pressionava molt al nostre cierre. El nostre pivot tenia moltes pèrdues de pilota i als últims minuts vam fer portero-jugador però sense èxit..."
               rows={4}
               className="w-full resize-none text-sm text-gray-700 placeholder-gray-300
                          border border-gray-200 rounded-xl px-4 py-3
