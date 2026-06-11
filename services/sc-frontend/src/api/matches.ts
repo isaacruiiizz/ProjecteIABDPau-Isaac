@@ -91,6 +91,7 @@ export interface MatchDetail {
   download_url: string | null;
   ai_stats: AiStats | null;
   ai_report: string | null;
+  ai_report_refined: string | null;
 }
 
 export async function getMatch(matchId: string): Promise<MatchDetail> {

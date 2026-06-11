@@ -78,3 +78,4 @@ class MatchDetail(BaseModel):
     download_url: str | None = None
     ai_stats: dict | None = None
     ai_report: str | None = None
+    ai_report_refined: str | None = None

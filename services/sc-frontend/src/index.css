@@ -1,8 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  * {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  }
+
+  body {
+    background-color: #080e08;
+    color: #a0d4a0;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track { background: #080e08; }
+  ::-webkit-scrollbar-thumb { background: #1a3a1a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #00ff41; }
+
+  ::selection {
+    background: #00ff4133;
+    color: #00ff41;
+  }
+}
+
 @keyframes indeterminate {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '_';
+  animation: blink 1s step-end infinite;
+  color: #00ff41;
+}
+
+.neon-glow {
+  text-shadow: 0 0 8px #00ff41, 0 0 16px #00ff4166;
 }

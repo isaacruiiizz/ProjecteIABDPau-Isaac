@@ -38,3 +38,8 @@ train_model/project-*/
 # Misc
 .DS_Store
 *.log
+
+# Artefactes locals (YOLO runs, scripts temporals)
+_ul/
+runs/
+docs/LogoSmartchrono.jpeg

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Clock, Film, LogOut, Tag, Timer } from 'lucide-react';
+import { Film, LogOut, Tag, Zap } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 
 export default function DashboardPage() {
@@ -13,54 +13,69 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-matrix-bg flex flex-col items-center justify-center px-4">
+
       {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="bg-blue-600 text-white rounded-2xl p-3">
-          <Timer size={28} />
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900">SmartChrono IP</h1>
+      <div className="flex flex-col items-center mb-2">
+        <img src="/logo.png" alt="SmartChrono IP" className="h-36 w-auto mb-4 object-contain" />
+        <h1 className="text-3xl font-bold text-neon neon-glow tracking-widest uppercase">
+          SmartChrono IP
+        </h1>
       </div>
-      <p className="text-gray-500 text-sm mb-10">Benvingut</p>
+      <p className="text-matrix-muted text-xs tracking-widest uppercase mb-10">
+        {'>'} Sistema d'anàlisi tàctica de futbol sala
+      </p>
 
       {/* Targetes d'acció */}
-      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-stretch gap-4 w-full max-w-2xl">
 
-        {/* Calcular minuts */}
+        {/* Analitzar partit */}
         <button
           onClick={() => navigate('/process')}
-          className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6
-                     text-left hover:border-blue-300 hover:shadow-md transition-all group"
+          className="flex-1 flex flex-col bg-matrix-card border border-matrix-border rounded-lg p-6
+                     text-left hover:border-neon hover:bg-matrix-raised transition-all group"
         >
-          <div className="bg-blue-100 text-blue-600 rounded-xl p-3 w-fit mb-4
-                          group-hover:bg-blue-600 group-hover:text-white transition-colors">
-            <Clock size={24} />
+          <div className="flex items-center gap-2 mb-4">
+            <div className="bg-[#001a08] text-neon border border-[#1a3a1a] rounded p-2.5 w-fit
+                            group-hover:bg-neon group-hover:text-matrix-bg transition-colors">
+              <Zap size={22} />
+            </div>
+            <span className="text-matrix-muted text-xs uppercase tracking-widest">01</span>
           </div>
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Calcular minuts</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Processa un vídeo de partit i obté automàticament els minuts jugats per cada jugador.
+          <h2 className="text-sm font-bold text-neon uppercase tracking-wider mb-2">
+            Analitzar Partit
+          </h2>
+          <p className="flex-1 text-xs text-matrix-text leading-relaxed mb-4">
+            Processa un vídeo de partit. El sistema detecta els jugadors per color de samarreta
+            i genera un informe tàctic automàtic.
           </p>
-          <span className="text-sm font-medium text-blue-600 group-hover:underline">
-            Començar →
+          <span className="text-xs font-medium text-neon uppercase tracking-widest">
+            {'>'} Iniciar →
           </span>
         </button>
 
         {/* Els meus partits */}
         <button
           onClick={() => navigate('/matches')}
-          className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6
-                     text-left hover:border-emerald-300 hover:shadow-md transition-all group"
+          className="flex-1 flex flex-col bg-matrix-card border border-matrix-border rounded-lg p-6
+                     text-left hover:border-neon hover:bg-matrix-raised transition-all group"
         >
-          <div className="bg-emerald-100 text-emerald-600 rounded-xl p-3 w-fit mb-4
-                          group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-            <Film size={24} />
+          <div className="flex items-center gap-2 mb-4">
+            <div className="bg-[#001a08] text-neon border border-[#1a3a1a] rounded p-2.5 w-fit
+                            group-hover:bg-neon group-hover:text-matrix-bg transition-colors">
+              <Film size={22} />
+            </div>
+            <span className="text-matrix-muted text-xs uppercase tracking-widest">02</span>
           </div>
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Els meus partits</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Consulta l'estat dels vídeos pujats i el progrés de cada processament.
+          <h2 className="text-sm font-bold text-neon uppercase tracking-wider mb-2">
+            Els Meus Partits
+          </h2>
+          <p className="flex-1 text-xs text-matrix-text leading-relaxed mb-4">
+            Consulta l'estat dels vídeos pujats, visualitza els resultats i
+            descarrega els vídeos processats.
           </p>
-          <span className="text-sm font-medium text-emerald-600 group-hover:underline">
-            Veure partits →
+          <span className="text-xs font-medium text-neon uppercase tracking-widest">
+            {'>'} Veure registres →
           </span>
         </button>
 
@@ -68,19 +83,24 @@ export default function DashboardPage() {
         {role === 'admin' && (
           <button
             onClick={() => navigate('/admin/labeling')}
-            className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-6
-                       text-left hover:border-indigo-300 hover:shadow-md transition-all group"
+            className="flex-1 flex flex-col bg-matrix-card border border-matrix-border rounded-lg p-6
+                       text-left hover:border-neon hover:bg-matrix-raised transition-all group"
           >
-            <div className="bg-indigo-100 text-indigo-600 rounded-xl p-3 w-fit mb-4
-                            group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-              <Tag size={24} />
+            <div className="flex items-center gap-2 mb-4">
+              <div className="bg-[#001a08] text-neon border border-[#1a3a1a] rounded p-2.5 w-fit
+                              group-hover:bg-neon group-hover:text-matrix-bg transition-colors">
+                <Tag size={22} />
+              </div>
+              <span className="text-matrix-muted text-xs uppercase tracking-widest">ADM</span>
             </div>
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Etiquetar frames</h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <h2 className="text-sm font-bold text-neon uppercase tracking-wider mb-2">
+              Etiquetar Frames
+            </h2>
+            <p className="flex-1 text-xs text-matrix-text leading-relaxed mb-4">
               Puja vídeos per etiquetar frames manualment i millorar el model de detecció.
             </p>
-            <span className="text-sm font-medium text-indigo-600 group-hover:underline">
-              Etiquetar →
+            <span className="text-xs font-medium text-neon uppercase tracking-widest">
+              {'>'} Mode admin →
             </span>
           </button>
         )}
@@ -89,11 +109,11 @@ export default function DashboardPage() {
       {/* Logout */}
       <button
         onClick={handleLogout}
-        className="mt-8 flex items-center gap-2 text-sm text-gray-500
-                   hover:text-gray-700 transition-colors"
+        className="mt-10 flex items-center gap-2 text-xs text-matrix-muted
+                   hover:text-matrix-error uppercase tracking-widest transition-colors"
       >
-        <LogOut size={15} />
-        Tanca sessió
+        <LogOut size={14} />
+        Tancar sessió
       </button>
     </div>
   );

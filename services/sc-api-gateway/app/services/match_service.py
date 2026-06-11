@@ -152,15 +152,16 @@ async def get_match_detail(match_id: str, user_id: str, db) -> dict:
         )
 
     return {
-        "match_id":      str(doc["_id"]),
-        "title":         doc["title"],
-        "status":        doc["status"],
-        "created_at":    doc["created_at"],
-        "start_seconds": doc.get("start_seconds"),
-        "end_seconds":   doc.get("end_seconds"),
-        "download_url":  download_url,
-        "ai_stats":      doc.get("ai_stats"),
-        "ai_report":     doc.get("ai_report"),
+        "match_id":          str(doc["_id"]),
+        "title":             doc["title"],
+        "status":            doc["status"],
+        "created_at":        doc["created_at"],
+        "start_seconds":     doc.get("start_seconds"),
+        "end_seconds":       doc.get("end_seconds"),
+        "download_url":      download_url,
+        "ai_stats":          doc.get("ai_stats"),
+        "ai_report":         doc.get("ai_report"),
+        "ai_report_refined": doc.get("ai_report_refined"),
     }
 
 
@@ -254,6 +255,11 @@ async def refine_ai_report(match_id: str, user_id: str, user_context: str, db) -
     text = resp.json().get("response", "").strip()
     if not text:
         raise RuntimeError("Ollama no ha retornat cap resposta")
+
+    await db["matches"].update_one(
+        {"_id": ObjectId(match_id)},
+        {"$set": {"ai_report_refined": text, "updated_at": datetime.now(timezone.utc)}},
+    )
     return text
 
 
