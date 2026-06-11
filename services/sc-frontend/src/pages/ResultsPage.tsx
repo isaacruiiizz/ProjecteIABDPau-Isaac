@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Download, Film, Loader, Timer } from 'lucide-react';
+import { AlertCircle, CheckCircle, Download, Film, Loader, Play, Timer } from 'lucide-react';
 import { getMatch, type MatchDetail } from '../api/matches';
 
 function formatDate(iso: string): string {
@@ -20,6 +20,8 @@ function formatDuration(start: number | null, end: number | null): string {
   return `${m}:${s}`;
 }
 
+const NOTES_KEY = (id: string) => `sc-notes-${id}`;
+
 export default function ResultsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -28,6 +30,10 @@ export default function ResultsPage() {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [showVideo,   setShowVideo]   = useState(false);
+  const [notes,       setNotes]       = useState('');
+  const [savedNote,   setSavedNote]   = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -35,6 +41,7 @@ export default function ResultsPage() {
       .then(setMatch)
       .catch(() => setError("No s'han pogut carregar els resultats del partit."))
       .finally(() => setLoading(false));
+    setNotes(localStorage.getItem(NOTES_KEY(id)) ?? '');
   }, [id]);
 
   function handleDownload() {
@@ -47,6 +54,14 @@ export default function ResultsPage() {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => setDownloading(false), 1500);
+  }
+
+  function handleSaveNotes() {
+    if (!id) return;
+    localStorage.setItem(NOTES_KEY(id), notes);
+    setSavedNote(true);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => setSavedNote(false), 2000);
   }
 
   if (loading) {
@@ -100,9 +115,7 @@ export default function ResultsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {match.title}
-                    </p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{match.title}</p>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                      text-xs font-medium bg-green-100 text-green-700">
                       <CheckCircle size={11} />
@@ -122,32 +135,85 @@ export default function ResultsPage() {
               </div>
             </div>
 
-            {/* Descarregar */}
+            {/* Vídeo processat */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-5">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">
                 Vídeo processat
               </p>
 
               {match.download_url ? (
-                <button
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="w-full flex items-center justify-center gap-2
-                             bg-blue-600 hover:bg-blue-700 disabled:opacity-60
-                             disabled:cursor-not-allowed text-white text-sm font-medium
-                             py-2.5 rounded-xl transition-colors"
-                >
-                  {downloading
-                    ? <Loader size={15} className="animate-spin" />
-                    : <Download size={15} />
-                  }
-                  {downloading ? 'Preparant descàrrega…' : 'Descarregar vídeo (MP4)'}
-                </button>
+                <>
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setShowVideo(v => !v)}
+                      className="flex-1 flex items-center justify-center gap-2
+                                 border border-gray-200 hover:border-blue-300 hover:bg-blue-50
+                                 text-gray-700 hover:text-blue-700 text-sm font-medium
+                                 py-2.5 rounded-xl transition-colors"
+                    >
+                      <Play size={15} />
+                      {showVideo ? 'Amagar vídeo' : 'Veure vídeo'}
+                    </button>
+                    <button
+                      onClick={handleDownload}
+                      disabled={downloading}
+                      className="flex-1 flex items-center justify-center gap-2
+                                 bg-blue-600 hover:bg-blue-700 disabled:opacity-60
+                                 disabled:cursor-not-allowed text-white text-sm font-medium
+                                 py-2.5 rounded-xl transition-colors"
+                    >
+                      {downloading
+                        ? <Loader size={15} className="animate-spin" />
+                        : <Download size={15} />
+                      }
+                      {downloading ? 'Descarregant…' : 'Descarregar'}
+                    </button>
+                  </div>
+
+                  {showVideo && (
+                    <div className="rounded-xl overflow-hidden bg-black">
+                      <video
+                        src={match.download_url}
+                        controls
+                        className="w-full max-h-96"
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-gray-400 text-center py-2">
                   El vídeo no està disponible.
                 </p>
               )}
+            </div>
+
+            {/* Notes de l'entrenador */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Notes del partit
+                </p>
+                {savedNote && (
+                  <span className="text-xs text-green-600 font-medium">Desat ✓</span>
+                )}
+              </div>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Escriu aquí les teves observacions del partit..."
+                rows={8}
+                className="w-full resize-none text-sm text-gray-700 placeholder-gray-300
+                           border border-gray-200 rounded-xl px-4 py-3
+                           focus:outline-none focus:ring-2 focus:ring-blue-500
+                           focus:border-transparent transition-shadow"
+              />
+              <button
+                onClick={handleSaveNotes}
+                className="mt-3 w-full bg-gray-900 hover:bg-gray-800 text-white
+                           text-sm font-medium py-2.5 rounded-xl transition-colors"
+              >
+                Desar notes
+              </button>
             </div>
 
           </div>
