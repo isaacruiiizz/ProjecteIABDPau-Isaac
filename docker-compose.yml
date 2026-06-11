@@ -202,23 +202,6 @@ services:
       start_period: 120s
     logging: *default-logging
 
-  sc-active-learner:
-    build:
-      context: ./services/sc-active-learner
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      MINIO_ACCESS_KEY: ${SC_ACTIVE_LEARNER_MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${SC_ACTIVE_LEARNER_MINIO_PASSWORD}
-    networks:
-      - sc-backend-net
-    depends_on:
-      sc-redis:
-        condition: service_healthy
-      sc-object-storage:
-        condition: service_healthy
-    logging: *default-logging
 
   sc-inference-worker:
     build:
