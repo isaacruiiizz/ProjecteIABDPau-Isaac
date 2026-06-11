@@ -26,6 +26,9 @@ training_pipeline/label_studio_export/
 training_pipeline/yolo_dataset/
 training_pipeline/runs/
 training_pipeline/tasks/
+
+# Datasets d'entrenament (imatges, van a MinIO no al repo)
+train_model/project-*/
  
 # Models (pesos entrenats, van a MinIO no al repo)
 *.pt
@@ -35,3 +38,9 @@ training_pipeline/tasks/
 # Misc
 .DS_Store
 *.log
+
+# Artefactes locals (YOLO runs, scripts temporals)
+_ul/
+runs/
+docs/LogoSmartchrono.jpeg
+services/sc-frontend/public/logo.jpeg

@@ -6,6 +6,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import LabelingPage from './pages/LabelingPage';
+import ProcessPage from './pages/ProcessPage';
+import MatchesPage from './pages/MatchesPage';
+import ResultsPage from './pages/ResultsPage';
 import useAuthStore from './store/authStore';
 import type { AuthState } from './types/auth';
 import { parseJwtRole } from './utils/jwt';
@@ -35,6 +38,9 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/process" element={<ProcessPage />} />
+          <Route path="/matches" element={<MatchesPage />} />
+          <Route path="/matches/:id/results" element={<ResultsPage />} />
         </Route>
         <Route element={<AdminRoute />}>
           <Route path="/admin/labeling" element={<LabelingPage />} />

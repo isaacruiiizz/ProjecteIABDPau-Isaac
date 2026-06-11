@@ -1,9 +1,14 @@
 """
-Classifica cada detecció com 'player_own' o 'others' analitzant el color
-dominant de la franja superior del bounding box (samarreta).
+Classifica cada detecció com 'player_own' o 'player_other' analitzant el hue
+dominant de la samarreta, amb background subtraction per bbox.
 
-Si JERSEY_OWN_COLOR_HSV no està configurat, totes les deteccions reben
-'player_own' com a fallback.
+Algoritme:
+  1. Mostreig dels 4 cantons del bbox → hue dominant del terra (background)
+  2. Crop 20-55% vertical del bbox (zona del torç)
+  3. Convertir a HSV; filtrar S < MIN_SAT o V < MIN_VAL
+  4. Excloure píxels amb hue similar al terra (evita contaminació parquet/gespa)
+  5. Histograma del canal H restant → pic = color dominant de la samarreta
+  6. Distancia circular H-only vs. own_hue <= threshold → player_own
 """
 import logging
 
@@ -12,67 +17,97 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Fracció superior del BB que s'analitza (evita shorts/cames/gespa)
-_JERSEY_CROP_RATIO = 0.40
+_TORSO_TOP    = 0.20
+_TORSO_BOTTOM = 0.55
+_MIN_SAT      = 80     # saturaciò mínima (el terra filtrat per BG subtract ja no contamina)
+_MIN_VAL      = 50
+_BG_CORNER_PX = 8      # px dels cantons del bbox per mostrejar el terra
+_BG_HUE_TOL   = 12     # excloure píxels a menys de 12° del hue del terra
 
 
-def _parse_hsv_config(hsv_str: str) -> tuple[int, int, int] | None:
-    """Parseja '120,80,150' → (120, 80, 150). Retorna None si buit o invàlid."""
+def _parse_own_hue(hsv_str: str) -> int | None:
     if not hsv_str or not hsv_str.strip():
         return None
     try:
-        parts = [int(v.strip()) for v in hsv_str.split(",")]
-        if len(parts) != 3:
-            return None
-        return tuple(parts)  # type: ignore[return-value]
+        return int(hsv_str.strip().split(",")[0])
     except ValueError:
         logger.warning('{"event":"jersey_classifier_bad_config","value":"%s"}', hsv_str)
         return None
 
 
-def _dominant_hsv(crop: np.ndarray) -> tuple[float, float, float]:
-    """Retorna el color dominant d'un crop en espai HSV (mitjana ponderada)."""
-    hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
-    # Màscara per ignorar píxels molt foscos (ombres/gespa)
-    mask = hsv[:, :, 2] > 30
-    if mask.sum() == 0:
-        return (0.0, 0.0, 0.0)
-    h = float(np.median(hsv[:, :, 0][mask]))
-    s = float(np.median(hsv[:, :, 1][mask]))
-    v = float(np.median(hsv[:, :, 2][mask]))
-    return (h, s, v)
+def _sample_bg_hue(image: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> int | None:
+    """
+    Mostra els 4 cantons del bbox per estimar el color del terra.
+    Retorna el hue dominant dels cantons, o None si no n'hi ha prou pixels.
+    """
+    h, w = image.shape[:2]
+    p = _BG_CORNER_PX
+    corners = [
+        image[max(0, y1):min(h, y1+p),    max(0, x1):min(w, x1+p)],     # sup-esq
+        image[max(0, y1):min(h, y1+p),    max(0, x2-p):min(w, x2)],     # sup-dre
+        image[max(0, y2-p):min(h, y2),    max(0, x1):min(w, x1+p)],     # inf-esq
+        image[max(0, y2-p):min(h, y2),    max(0, x2-p):min(w, x2)],     # inf-dre
+    ]
+    patches = [c for c in corners if c.size > 0]
+    if not patches:
+        return None
+
+    combined = np.concatenate([c.reshape(-1, 3) for c in patches], axis=0)
+    combined_img = combined.reshape(1, -1, 3).astype(np.uint8)
+    hsv   = cv2.cvtColor(combined_img, cv2.COLOR_BGR2HSV)[0]
+    mask  = (hsv[:, 1] >= 30) & (hsv[:, 2] >= 50)
+    if mask.sum() < 5:
+        return None
+    hist = cv2.calcHist([hsv[:, 0][mask]], [0], None, [180], [0, 180]).flatten()
+    return int(np.argmax(hist))
 
 
-def _hsv_distance(a: tuple, b: tuple) -> float:
-    """Distància euclidiana en espai HSV (pes doble a la component H)."""
-    dh = min(abs(a[0] - b[0]), 180 - abs(a[0] - b[0]))  # H és circular [0..180]
-    ds = abs(a[1] - b[1])
-    dv = abs(a[2] - b[2])
-    return float(np.sqrt((dh * 2) ** 2 + ds ** 2 + dv ** 2))
+def _dominant_hue(crop_bgr: np.ndarray, bg_hue: int | None) -> int | None:
+    """
+    Hue dominant del crop excloent els píxels similars al terra (bg_hue).
+    """
+    if crop_bgr.size == 0:
+        return None
+
+    hsv  = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
+    mask = (hsv[:, :, 1] >= _MIN_SAT) & (hsv[:, :, 2] >= _MIN_VAL)
+
+    if bg_hue is not None:
+        h_ch  = hsv[:, :, 0].astype(np.int16)
+        diff  = np.abs(h_ch - bg_hue)
+        circ  = np.minimum(diff, 180 - diff)
+        mask  = mask & (circ > _BG_HUE_TOL)
+
+    if mask.sum() < 8:
+        return None
+
+    hist = cv2.calcHist([hsv[:, :, 0]], [0], mask.astype(np.uint8), [180], [0, 180])
+    return int(np.argmax(hist))
+
+
+def _hue_distance(h_a: int, h_b: int) -> int:
+    d = abs(h_a - h_b)
+    return min(d, 180 - d)
 
 
 def classify(
     image: np.ndarray,
     detections: list[dict],
     own_color_hsv_str: str,
-    threshold: int = 30,
+    threshold: int = 15,
 ) -> list[dict]:
     """
-    Assigna 'player_own' o 'others' a cada detecció basant-se en el color
-    de la samarreta (franja superior del BB).
+    Assigna 'player_own' o 'player_other' a cada deteccio.
 
     Args:
-        image:            imatge RGB en format numpy (H, W, 3)
-        detections:       llista de dicts amb x1, y1, x2, y2 normalitzats [0..1]
-        own_color_hsv_str: string "H,S,V" del color propi. Buit → tot 'player_own'
-        threshold:        distància màxima HSV per considerar 'player_own'
-
-    Returns:
-        Mateixa llista amb camp 'label' afegit ('player_own' | 'others')
+        image:             imatge BGR (H, W, 3)
+        detections:        dicts amb x1, y1, x2, y2 normalitzats [0..1]
+        own_color_hsv_str: 'H' o 'H,S,V' del color propi. Buit -> tot 'player_own'
+        threshold:         diferencia maxima de hue per considerar 'player_own'
     """
-    own_color = _parse_hsv_config(own_color_hsv_str)
+    own_hue = _parse_own_hue(own_color_hsv_str)
 
-    if own_color is None:
+    if own_hue is None:
         for det in detections:
             det["label"] = "player_own"
         return detections
@@ -85,16 +120,28 @@ def classify(
         x2 = int(det["x2"] * w_img)
         y2 = int(det["y2"] * h_img)
 
-        # Retalla el 40% superior del BB (zona de la samarreta)
-        jersey_y2 = y1 + max(1, int((y2 - y1) * _JERSEY_CROP_RATIO))
-        crop = image[y1:jersey_y2, x1:x2]
+        # 1. Estima el color del terra als cantons del bbox
+        bg_hue = _sample_bg_hue(image, x1, y1, x2, y2)
 
-        if crop.size == 0:
-            det["label"] = "player_own"
+        # 2. Crop de torç
+        box_h    = max(1, y2 - y1)
+        torso_y1 = y1 + int(box_h * _TORSO_TOP)
+        torso_y2 = y1 + int(box_h * _TORSO_BOTTOM)
+        crop     = image[torso_y1:torso_y2, x1:x2]
+
+        # 3. Hue dominant sense el terra
+        dom_hue = _dominant_hue(crop, bg_hue)
+
+        if dom_hue is None:
+            # Crop buit després de treure el terra → la samarreta ÉS el color del terra
+            # (propi equip). Si el terra NO és del color propi, és un jugador inclassificable.
+            bg_similar_to_own = bg_hue is not None and _hue_distance(bg_hue, own_hue) <= 20
+            det["label"] = "player_own" if bg_similar_to_own else "player_other"
             continue
 
-        dominant = _dominant_hsv(crop)
-        distance = _hsv_distance(dominant, own_color)
-        det["label"] = "player_own" if distance <= threshold else "others"
+        det["label"] = (
+            "player_own" if _hue_distance(dom_hue, own_hue) <= threshold
+            else "player_other"
+        )
 
     return detections

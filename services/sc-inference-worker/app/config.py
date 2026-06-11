@@ -20,9 +20,14 @@ class Settings(BaseSettings):
     MINIO_BUCKET_FEEDBACK: str = "feedback-data"
     MINIO_BUCKET_MODELS: str = "models"
     MINIO_BUCKET_LABELING_FRAMES: str = "labeling-frames"
-    MINIO_MODEL_KEY: str = "yolo/base/yolov8n.pt"  # clau del model base dins el bucket models
+    MINIO_MODEL_KEY: str = "rfdetr/base/rf-detr-small.pth"  # clau del model base dins el bucket models
 
     # IA — producció
+    RTDETR_MODEL_KEY: str = "rtdetr/base/rtdetr-l.pt"   # path MinIO; sense '/' → Ultralytics auto-descàrrega
+    RTDETR_CONFIDENCE: float = 0.35
+    INFERENCE_DEVICE: str = "cpu"
+    INFERENCE_CLAHE: bool = True
+    INFERENCE_SHARPEN: bool = True
     YOLO_MODEL_PATH: str = "yolo/weights/v1.pt"
     CNN_MODEL_PATH: str = "cnn/weights/v1.keras"
     INFERENCE_CONFIDENCE_THRESHOLD: float = 0.6
@@ -30,8 +35,8 @@ class Settings(BaseSettings):
 
     # IA — pre-anotació etiquetatge
     INFERENCE_LABELING_CONFIDENCE: float = 0.3
-    JERSEY_OWN_COLOR_HSV: str = ""   # ex: "120,80,150". Buit → fallback player_own
-    JERSEY_COLOR_THRESHOLD: int = 30
+    JERSEY_OWN_COLOR_HSV: str = "18,133,137"  # HSV groc mostrejat del vídeo
+    JERSEY_COLOR_THRESHOLD: int = 50
 
     # Label Studio
     LABEL_STUDIO_URL: str = "http://sc-label-studio:8081"

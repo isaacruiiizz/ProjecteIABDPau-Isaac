@@ -33,11 +33,11 @@ create_or_update_user() {
 create_or_update_user sc-api-gateway      "$SC_API_GATEWAY_MINIO_PASSWORD"
 create_or_update_user sc-video-manager    "$SC_VIDEO_MANAGER_MINIO_PASSWORD"
 create_or_update_user sc-inference-worker "$SC_INFERENCE_WORKER_MINIO_PASSWORD"
-create_or_update_user sc-active-learner   "$SC_ACTIVE_LEARNER_MINIO_PASSWORD"
 create_or_update_user sc-label-studio     "$SC_LABEL_STUDIO_MINIO_PASSWORD"
+create_or_update_user sc-logic-aggregator "$SC_LOGIC_AGGREGATOR_MINIO_PASSWORD"
 
 # 6. Carregar i assignar polítiques (elimina primer per garantir que s'aplica la versió actual)
-for service in sc-api-gateway sc-video-manager sc-inference-worker sc-active-learner sc-label-studio; do
+for service in sc-api-gateway sc-video-manager sc-inference-worker sc-label-studio sc-logic-aggregator; do
   mc admin policy rm "$ALIAS" "policy-$service" 2>/dev/null || true
   mc admin policy create "$ALIAS" "policy-$service" "/init/policies/$service.json"
   mc admin policy attach "$ALIAS" "policy-$service" --user "$service"

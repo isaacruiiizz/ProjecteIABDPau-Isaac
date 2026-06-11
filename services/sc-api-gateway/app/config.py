@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Cookie del refresh token: True requereix HTTPS. Posar False si HTTP.
     COOKIE_SECURE: bool = False
 
+    # Ollama
+    OLLAMA_BASE_URL: str = "http://sc-ollama:11434"
+
     # Sentry
     SENTRY_DSN: str = ""
 

@@ -1,20 +1,16 @@
-FROM nvidia/cuda:12.6.3-runtime-ubuntu22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
+FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3.11 \
-        python3-pip \
         libgl1 \
         libglib2.0-0 \
-    && ln -sf /usr/bin/python3.11 /usr/local/bin/python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python3.11 -m pip install -r requirements.txt
+# PyTorch CPU — el servidor no té GPU drivers disponibles; estalvia ~10GB d'imatge
+RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+    && pip install -r requirements.txt
 
 COPY app/ ./app/
 

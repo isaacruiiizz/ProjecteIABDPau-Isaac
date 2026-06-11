@@ -104,12 +104,6 @@ ProjecteIABDPau-Isaac/
 │   │   ├── .env.example                   ← [PJM-15 ✓]
 │   │   └── app/
 │   │       └── __init__.py
-│   ├── sc-active-learner/                 ← [PJM-55 ✓]
-│   │   ├── Dockerfile                     ← python:3.11-slim
-│   │   ├── requirements.txt               ← [placeholder]
-│   │   ├── .env.example                   ← [PJM-15 ✓]
-│   │   └── app/
-│   │       └── __init__.py
 │   ├── sc-frontend/                       ← React 18 + Vite + Tailwind, port 3000  [PJM-55 ✓] [PJM-20 ✓]
 │   │   ├── Dockerfile                     ← multistage: node:22-alpine build + serve
 │   │   ├── package.json                   ← React 18, Vite, Tailwind, Zustand, Axios, Lucide
@@ -153,7 +147,6 @@ ProjecteIABDPau-Isaac/
 │   │           ├── sc-api-gateway.json
 │   │           ├── sc-video-manager.json
 │   │           ├── sc-inference-worker.json
-│   │           ├── sc-active-learner.json
 │   │           └── sc-label-studio.json
 │   ├── sc-prometheus/                     ← [per crear — Sprint 7] prometheus.yml
 │   ├── sc-grafana/                        ← [PJM-15 ✓]

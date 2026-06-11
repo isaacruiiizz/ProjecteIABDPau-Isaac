@@ -38,7 +38,7 @@ def _trigger_label_studio_sync(
     url = f"{ls_url.rstrip('/')}/api/storages/s3/{storage_id}/sync"
     headers = {"Authorization": f"Token {api_token}"}
     try:
-        resp = requests.post(url, headers=headers, timeout=10)
+        resp = requests.post(url, headers=headers, timeout=60)
         resp.raise_for_status()
         logger.info('{"event":"ls_sync_triggered","storage_id":%d}', storage_id)
     except requests.RequestException as exc:
@@ -54,7 +54,7 @@ def _patch_session_task_urls(
     session_id: str,
     minio_public_url: str,
     project_id: int = 1,
-    max_wait_s: int = 30,
+    max_wait_s: int = 120,
 ) -> None:
     """
     Actualitza les URLs de les tasques de Label Studio d'una sessió per apuntar
