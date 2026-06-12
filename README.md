@@ -100,19 +100,53 @@ La consola de MinIO és accessible a `http://localhost:9001`.
 
 ## Flux d'ús
 
-### Processar un partit
+### Generar un informe tàctic
 
-1. Accedir a `http://localhost:3000` i iniciar sessió.
-2. Crear un nou partit i pujar el vídeo `.mp4`.
-3. Iniciar el processament. El sistema extrau els frames, detecta els jugadors, classifica per equip i genera l'informe tàctic.
+El procés es guia en tres passos des de la interfície web (`http://localhost:3000`).
+
+**Pas 1 — Puja el vídeo**
+
+Accedir a la secció de nou partit. Seleccionar el fitxer `.mp4` del partit (arrossegar o fer clic) i donar-li un títol. Fer clic a "Puja el vídeo" per iniciar la càrrega al servidor.
+
+**Pas 2 — Definir la ROI**
+
+Un cop el vídeo s'ha pujat, el sistema mostra el primer fotograma. Cal marcar els 4 vèrtexs del polígon que delimita el camp de joc, fent clic sobre les quatre cantonades en ordre. Això exclou del processament marcadors, banquetes i zones no rellevants. Els vèrtexs es poden arrossegar per ajustar la posició i desfer o reiniciar si cal.
+
+**Pas 3 — Seleccionar el rang de temps**
+
+A continuació, el sistema mostra el vídeo complet amb un control de línia de temps. Cal arrossegar els dos extrems per definir el segon d'inici i el segon de fi del fragment que es vol analitzar (per exemple, el primer temps, una represa o un fragment concret).
+
+**Processament**
+
+Fer clic a "Iniciar processament". El pipeline s'executa de manera asíncrona:
+
+- `sc-video-manager` extrau els frames dins del rang i la ROI indicats.
+- `sc-inference-worker` detecta els jugadors en cada frame amb RT-DETR Large.
+- `sc-logic-aggregator` consolida les deteccions, calcula les estadístiques tàctiques i genera l'informe en català amb Ollama qwen2.5:3b.
+
+La interfície mostra el progrés en temps real. Quan el processament finalitza, redirigeix automàticament a la pàgina de resultats amb l'informe tàctic complet.
+
+---
 
 ### Etiquetatge i millora del model (opcional)
 
-1. Aixecar Label Studio: `docker compose up -d sc-label-studio`
-2. Accedir a `http://localhost:8081`.
-3. Els frames de vídeos de entrenament s'envien automàticament a Label Studio via la cua `video_to_process` amb `job_type: process_labeling`.
-4. Revisar les pre-anotacions generades per RF-DETR Small, corregir i exportar.
-5. Pujar el dataset a MinIO al bucket `datasets` per al reentrament.
+El flux d'etiquetatge és accessible des del menú d'administrador del frontend i permet generar pre-anotacions automàtiques per a nous vídeos d'entrenament.
+
+**Pas 1 — Pujar el vídeo d'entrenament**
+
+A la pàgina d'etiquetatge, seleccionar el fitxer `.mp4` de referència i configurar l'interval entre frames (per defecte, 1 frame cada 2 segons). Fer clic a "Pujar vídeo". El sistema extreu els frames de manera asíncrona i confirma quan estan disponibles.
+
+**Pas 2 — Seleccionar el color de samarreta**
+
+Un cop extrets els frames, la interfície mostra fotogrames representatius del vídeo (al 10%, 25%, 50%, 75% i 90% de la durada). Cal passar el cursor per sobre de la samarreta d'un jugador de l'equip que s'etiquetarà i fer clic per confirmar la selecció. El sistema captura el valor HSV d'aquella zona. Opcionalment, es pot ajustar la tolerància de color (valor entre 10 i 60) per adaptar-se a variacions d'il·luminació.
+
+**Pas 3 — Iniciar la pre-anotació**
+
+Fer clic a "Iniciar etiquetatge". El sistema envia tots els frames a `sc-inference-worker`, que aplica RF-DETR Small filtrat pel color HSV seleccionat per generar bounding boxes automàtiques. La interfície mostra el progrés de la pre-anotació en temps real.
+
+**Pas 4 — Revisar a Label Studio**
+
+Quan la pre-anotació finalitza, fer clic a "Obrir Label Studio" (accessible a `http://localhost:8081`). Les tasques apareixen preomplertes amb les deteccions automàtiques. Cal revisar-les, corregir les bounding boxes incorrectes i validar les correctes. Un cop completada la revisió, exportar les anotacions en format YOLO des de Label Studio i pujar el dataset resultant al bucket `datasets` de MinIO per al reentrament del model.
 
 ---
 
