@@ -44,3 +44,8 @@ _ul/
 runs/
 docs/LogoSmartchrono.jpeg
 services/sc-frontend/public/logo.jpeg
+
+# Documentació d'entrega (es distribueix per ZIP, no al repositori)
+docs/SmartChrono_IP_Memoria.docx
+docs/SmartChrono_IP_Infografia.html
+docs/SmartChrono_IP_Resum.html
