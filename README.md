@@ -104,9 +104,7 @@ La consola de MinIO és accessible a `http://localhost:9001`.
 
 1. Accedir a `http://localhost:3000` i iniciar sessió.
 2. Crear un nou partit i pujar el vídeo `.mp4`.
-3. Seleccionar els colors de cada equip amb l'eyedropper.
-4. Iniciar el processament. El sistema extrau els frames, detecta els jugadors, classifica per equip i genera l'informe tàctic.
-5. Descarregar l'informe en PDF des de la mateixa interfície.
+3. Iniciar el processament. El sistema extrau els frames, detecta els jugadors, classifica per equip i genera l'informe tàctic.
 
 ### Etiquetatge i millora del model (opcional)
 
